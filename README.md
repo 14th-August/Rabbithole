@@ -7,3 +7,8 @@ Here is an ER Diagram to show the actual design of the backend database tables r
 
 <img width="1083" height="647" alt="image" src="https://github.com/user-attachments/assets/8b8221ee-3504-40f2-82f4-5cfa13c56cbc" />
 
+# Development
+
+Run npx expo start
+Run ios:app for android
+
