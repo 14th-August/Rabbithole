@@ -57,15 +57,14 @@ Rabbithole/
     │       └── tabIcons/   # tab bar icons @1x/@2x/@3x
     └── src/
         └── app/            # expo-router route tree — every file here is a route
-            ├── _layout.tsx # root layout (Stack)
-            ├── index.tsx   # "/"
+            ├── _layout.tsx # root layout (Stack, headers hidden)
             └── (tabs)/     # route group — adds no URL segment
-                ├── _layout.tsx
-                ├── index.tsx
-                ├── items.tsx
-                ├── messages.tsx
-                ├── profile.tsx
-                └── wishlist.tsx
+                ├── _layout.tsx   # five-tab bar
+                ├── index.tsx     # Discover
+                ├── saved.tsx     # Saved
+                ├── create.tsx    # Create Post
+                ├── messages.tsx  # Messages
+                └── profile.tsx   # Profile
 ```
 
 ### Routing
@@ -74,16 +73,18 @@ Navigation is file-based via [`expo-router`](https://docs.expo.dev/router/introd
 
 - `_layout.tsx` defines how the routes in its directory are arranged (`Stack`, `Tabs`, or `Slot`). It is not itself a route.
 - `index.tsx` is the default route for its directory.
-- A directory in parentheses, like `(tabs)/`, is a **route group**: it organises files without adding a URL segment, so `(tabs)/items.tsx` serves `/items`.
+- A directory in parentheses, like `(tabs)/`, is a **route group**: it organises files without adding a URL segment, so `(tabs)/saved.tsx` serves `/saved`.
 - `[id].tsx` denotes a dynamic segment.
 
-| Route | File |
-| --- | --- |
-| `/` | `src/app/index.tsx` |
-| `/items` | `src/app/(tabs)/items.tsx` |
-| `/messages` | `src/app/(tabs)/messages.tsx` |
-| `/profile` | `src/app/(tabs)/profile.tsx` |
-| `/wishlist` | `src/app/(tabs)/wishlist.tsx` |
+| Tab | Route | File |
+| --- | --- | --- |
+| Discover | `/` | `src/app/(tabs)/index.tsx` |
+| Saved | `/saved` | `src/app/(tabs)/saved.tsx` |
+| Create Post | `/create` | `src/app/(tabs)/create.tsx` |
+| Messages | `/messages` | `src/app/(tabs)/messages.tsx` |
+| Profile | `/profile` | `src/app/(tabs)/profile.tsx` |
+
+The tab bar is built with `Tabs` imported from **`expo-router/js-tabs`**. Importing `Tabs` from `expo-router` directly is deprecated in SDK 57. Icons come from `@expo/vector-icons` (Ionicons).
 
 `app.json` enables `typedRoutes`, so route strings are type-checked against this tree. It also enables `reactCompiler` — write plain React and let the compiler handle memoisation.
 
@@ -96,15 +97,14 @@ import icon from "@/assets/images/tabIcons/home.png";
 
 ## Project Status
 
-The navigation shell is scaffolded; screens are not yet implemented.
+Navigation works end to end; screens are placeholders.
 
 - ✅ Expo SDK 57 project, TypeScript strict mode, path aliases
 - ✅ App icons, splash screen, and Android adaptive icon configured
-- ✅ Route tree and tab group scaffolded
-- 🚧 Tab screens are empty stubs pending implementation
-- 🚧 Tab group layout still needs to render `Tabs` rather than `Stack`
+- ✅ Five-tab bar wired up with icons, verified bundling for iOS
+- 🚧 Each tab renders a placeholder screen pending real implementation
 - ⬜ Backend, authentication, and data layer not yet chosen or built
-- ⬜ Tab bar icons exist for 2 of 5 tabs
+- ⬜ Custom tab icons in `assets/images/tabIcons/` unused — currently Ionicons
 - ⬜ No test suite or ESLint config yet
 
 ## License

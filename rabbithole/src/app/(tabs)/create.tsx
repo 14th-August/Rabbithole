@@ -1,12 +1,12 @@
 import { StyleSheet, Text, View, useColorScheme } from "react-native";
 
-export default function Messages() {
+export default function CreatePost() {
   const isDark = useColorScheme() === "dark";
 
   return (
     <View style={[styles.container, isDark && styles.containerDark]}>
       <Text style={[styles.text, isDark && styles.textDark]}>
-        This is the Messages screen
+        This is the Create Post screen
       </Text>
     </View>
   );
