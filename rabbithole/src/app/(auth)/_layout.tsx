@@ -36,18 +36,14 @@ export default function AuthLayout() {
   const insets = useSafeAreaInsets();
 
   /**
-   * Leave the auth flow.
+   * Leave the auth flow for the tab feed.
    *
-   * Popping is right when the user arrived from Profile or from the sibling auth
-   * screen. A deep link straight to `/sign-in` has nothing to pop, though, and
-   * with headers hidden that would strand them — so fall back to the feed.
+   * Deliberately unconditional for now: popping would strand anyone who arrived
+   * by deep link, since a direct hit on `/sign-in` has no history to pop and the
+   * headers here are hidden. Revisit once there is a session to route on.
    */
   function handleDismiss() {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    router.replace("/");
+    router.push("/");
   }
 
   return (
