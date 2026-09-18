@@ -2,7 +2,7 @@
  * Shell shared by every authentication route.
  *
  * Owns: the chrome around the auth forms — page background, the screen gutter,
- * and keeping the form clear of the keyboard.
+ * the dismiss control, and keeping the form clear of the keyboard.
  * Does not own: the fields inside it, or what submitting one means. Each route
  * supplies its own form, so this file never learns what "signing in" is.
  *
@@ -14,19 +14,41 @@
  * `(tabs)/index.tsx` for `/`, and the tab feed owns that route.
  */
 
-import { Stack } from "expo-router";
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { Stack, useRouter } from "expo-router";
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/theme";
 
 /**
- * Wraps the auth stack in the page background and the standard screen gutter.
+ * Wraps the auth stack in the page background, the standard screen gutter, and a
+ * dismiss control.
  *
  * Screens rendered inside are responsible for their own vertical placement —
  * a navigator fills its parent, so centring cannot be imposed from out here.
  */
 export default function AuthLayout() {
-  const { colors, layout } = useTheme();
+  const { colors, layout, spacing } = useTheme();
+  const router = useRouter();
+  // Headers are hidden here, so nothing else is holding the control clear of the
+  // notch or status bar. `expo-router` mounts the provider, so this is safe.
+  const insets = useSafeAreaInsets();
+
+  /**
+   * Leave the auth flow.
+   *
+   * Popping is right when the user arrived from Profile or from the sibling auth
+   * screen. A deep link straight to `/sign-in` has nothing to pop, though, and
+   * with headers hidden that would strand them — so fall back to the feed.
+   */
+  function handleDismiss() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/");
+  }
 
   return (
     <KeyboardAvoidingView
@@ -44,6 +66,24 @@ export default function AuthLayout() {
           },
         ]}
       >
+        {/* Outside the Stack so one control serves both sign-in and sign-up. */}
+        <Pressable
+          onPress={handleDismiss}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={layout.hitSlop}
+          style={[
+            styles.dismiss,
+            {
+              width: layout.tapTargetMin,
+              height: layout.tapTargetMin,
+              marginTop: insets.top + spacing.sm,
+            },
+          ]}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+        </Pressable>
+
         <Stack
           screenOptions={{
             headerShown: false,
@@ -63,5 +103,11 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  dismiss: {
+    alignItems: "center",
+    justifyContent: "center",
+    // Hugs the gutter rather than centring with the form above it.
+    alignSelf: "flex-start",
   },
 });
