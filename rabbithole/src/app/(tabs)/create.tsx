@@ -1,33 +1,43 @@
-import { StyleSheet, Text, View, useColorScheme } from "react-native";
+/**
+ * Create screen — `/create`.
+ *
+ * Owns: posting a new listing. A themed placeholder until the form is built.
+ * Does not own: what may or may not be listed. The university guidelines shown
+ * during this flow come from content policy, not from this file.
+ */
 
-export default function CreatePost() {
-  const isDark = useColorScheme() === "dark";
+import { StyleSheet, Text, View } from "react-native";
+
+import { useTheme } from "@/theme";
+
+/** The Create tab. */
+export default function Create() {
+  const { colors, layout, spacing, typography } = useTheme();
 
   return (
-    <View style={[styles.container, isDark && styles.containerDark]}>
-      <Text style={[styles.text, isDark && styles.textDark]}>
-        This is the Create Post screen
+    <View
+      style={[
+        styles.screen,
+        { backgroundColor: colors.background, paddingHorizontal: layout.screenPaddingX },
+      ]}
+    >
+      <Text style={[typography.title2, { color: colors.text.primary }]}>Create a listing</Text>
+      <Text
+        style={[
+          typography.subhead,
+          { color: colors.text.secondary, marginTop: spacing.xs, textAlign: "center" },
+        ]}
+      >
+        The form for posting something for sale will live here.
       </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ffffff",
-  },
-  containerDark: {
-    backgroundColor: "#000000",
-  },
-  text: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#11181C",
-  },
-  textDark: {
-    color: "#ECEDEE",
   },
 });

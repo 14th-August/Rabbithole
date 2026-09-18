@@ -1,11 +1,33 @@
+/**
+ * The five-tab bar.
+ *
+ * Owns: which tabs exist, their order, their icons, and their tinting.
+ * Does not own: what any tab renders. Each screen is its own file.
+ *
+ * Tabs comes from `expo-router/js-tabs` — importing it from `expo-router`
+ * directly is deprecated in SDK 57.
+ */
+
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router/js-tabs";
 
+import { useTheme } from "@/theme";
+
+/** Arranges the five primary tabs. */
 export default function TabsLayout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#208AEF",
+        tabBarActiveTintColor: colors.brand.default,
+        tabBarInactiveTintColor: colors.text.secondary,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+        },
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.text.primary,
       }}
     >
       <Tabs.Screen

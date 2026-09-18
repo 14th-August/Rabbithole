@@ -1,33 +1,43 @@
-import { StyleSheet, Text, View, useColorScheme } from "react-native";
+/**
+ * Discover screen — `/`.
+ *
+ * Owns: the campus feed. A themed placeholder until the feed is built.
+ * Does not own: listing data. That will arrive through a data hook, never by
+ * importing `@/mocks` here.
+ */
 
+import { StyleSheet, Text, View } from "react-native";
+
+import { useTheme } from "@/theme";
+
+/** The Discover tab. */
 export default function Discover() {
-  const isDark = useColorScheme() === "dark";
+  const { colors, layout, spacing, typography } = useTheme();
 
   return (
-    <View style={[styles.container, isDark && styles.containerDark]}>
-      <Text style={[styles.text, isDark && styles.textDark]}>
-        This is the Discover screen
+    <View
+      style={[
+        styles.screen,
+        { backgroundColor: colors.background, paddingHorizontal: layout.screenPaddingX },
+      ]}
+    >
+      <Text style={[typography.title2, { color: colors.text.primary }]}>Discover</Text>
+      <Text
+        style={[
+          typography.subhead,
+          { color: colors.text.secondary, marginTop: spacing.xs, textAlign: "center" },
+        ]}
+      >
+        Listings from students on campus will appear here.
       </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ffffff",
-  },
-  containerDark: {
-    backgroundColor: "#000000",
-  },
-  text: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#11181C",
-  },
-  textDark: {
-    color: "#ECEDEE",
   },
 });
