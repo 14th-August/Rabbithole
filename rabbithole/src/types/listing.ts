@@ -34,6 +34,16 @@ export interface Category {
   /** URL-safe, stable. Safe to hardcode in code; `name` is not. */
   slug: string;
   name: string;
+
+  /**
+   * Display order within a level, ascending.
+   *
+   * Exists because the Discover category bar is primary navigation, not a
+   * filter — leaving it to the planner's row order puts Course Supplies
+   * wherever it likes, and alphabetical would be an accident rather than a
+   * decision.
+   */
+  position: number;
 }
 
 export interface ListingImage {
@@ -70,8 +80,30 @@ export interface Listing {
   pickup_hint: string | null;
 
   created_at: string;
+
+  /**
+   * Last edit, maintained by trigger.
+   *
+   * Distinct from `created_at` because edits are real: rendering "posted 3d ago"
+   * on a listing whose price changed an hour ago is a lie the buyer acts on.
+   */
+  updated_at: string;
+
   /** Set when `status` becomes `sold`; `null` otherwise. */
   sold_at: string | null;
+}
+
+/**
+ * A row of `saved_listings` — one user's bookmark of one listing.
+ *
+ * Keyed by the pair, so saving is idempotent: tapping the bookmark twice is an
+ * upsert rather than a duplicate. Screens read `is_saved` off the composed view
+ * models below rather than this row; it exists for the write path.
+ */
+export interface SavedListing {
+  user_id: string;
+  listing_id: string;
+  created_at: string;
 }
 
 /**

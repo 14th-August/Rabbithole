@@ -14,11 +14,11 @@ import type { Category } from "@/types";
 
 export const mockCategories: Category[] = [
   // Top level
-  { id: "10000000-0000-4000-8000-000000000001", parent_id: null, slug: "textbooks", name: "Textbooks" },
-  { id: "10000000-0000-4000-8000-000000000002", parent_id: null, slug: "electronics", name: "Electronics" },
-  { id: "10000000-0000-4000-8000-000000000003", parent_id: null, slug: "furniture", name: "Furniture" },
-  { id: "10000000-0000-4000-8000-000000000004", parent_id: null, slug: "transport", name: "Transport" },
-  { id: "10000000-0000-4000-8000-000000000005", parent_id: null, slug: "supplies", name: "Course Supplies" },
+  { id: "10000000-0000-4000-8000-000000000001", parent_id: null, slug: "textbooks", name: "Textbooks" , position: 0 },
+  { id: "10000000-0000-4000-8000-000000000002", parent_id: null, slug: "electronics", name: "Electronics" , position: 1 },
+  { id: "10000000-0000-4000-8000-000000000003", parent_id: null, slug: "furniture", name: "Furniture" , position: 2 },
+  { id: "10000000-0000-4000-8000-000000000004", parent_id: null, slug: "transport", name: "Transport" , position: 3 },
+  { id: "10000000-0000-4000-8000-000000000005", parent_id: null, slug: "supplies", name: "Course Supplies" , position: 4 },
 
   // Textbook subjects
   {
@@ -26,30 +26,35 @@ export const mockCategories: Category[] = [
     parent_id: "10000000-0000-4000-8000-000000000001",
     slug: "biology",
     name: "Biology",
+    position: 0,
   },
   {
     id: "10000000-0000-4000-8000-000000000012",
     parent_id: "10000000-0000-4000-8000-000000000001",
     slug: "mathematics",
     name: "Mathematics",
+    position: 1,
   },
   {
     id: "10000000-0000-4000-8000-000000000013",
     parent_id: "10000000-0000-4000-8000-000000000001",
     slug: "chemistry",
     name: "Chemistry",
+    position: 2,
   },
   {
     id: "10000000-0000-4000-8000-000000000014",
     parent_id: "10000000-0000-4000-8000-000000000001",
     slug: "nursing",
     name: "Nursing",
+    position: 3,
   },
   {
     id: "10000000-0000-4000-8000-000000000015",
     parent_id: "10000000-0000-4000-8000-000000000001",
     slug: "psychology",
     name: "Psychology",
+    position: 4,
   },
 ];
 

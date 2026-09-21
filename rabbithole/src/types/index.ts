@@ -21,7 +21,20 @@ export type {
   ListingImage,
   ListingStatus,
   ListingSummary,
+  SavedListing,
 } from "./listing";
+
+/**
+ * Generated from the live schema by `supabase gen types typescript --local`.
+ *
+ * Exported for the data layer, which needs `Database` to type the client. The
+ * hand-written row types above remain the ones screens import: they carry the
+ * TSDoc explaining what a null *means*, which generation cannot produce.
+ *
+ * Regenerate after every migration and diff the two. A difference is either a
+ * schema mistake or a UI assumption that was never true.
+ */
+export type { Database, Json } from "./database";
 
 export type { Profile, ProfilePreview } from "./profile";
 

@@ -71,8 +71,16 @@ const SELLER = {
   alex: "00000000-0000-4000-8000-000000000005",
 } as const;
 
+/**
+ * A fixture before composition.
+ *
+ * `updated_at` is omitted and derived in {@link toListingDetail}: none of these
+ * fixtures has been edited, so it always equals `created_at`. Stating it twelve
+ * times would be noise, and a fixture that HAS been edited is a case worth
+ * adding deliberately rather than by copy-paste.
+ */
 interface ListingSeed
-  extends Omit<ListingDetail, "seller" | "category" | "images"> {
+  extends Omit<ListingDetail, "seller" | "category" | "images" | "updated_at"> {
   image_count: number;
 }
 
@@ -284,6 +292,7 @@ function toListingDetail(seed: ListingSeed): ListingDetail {
 
   return {
     ...listing,
+    updated_at: seed.created_at,
     seller: toProfilePreview(mockProfilesById[seed.seller_id]!),
     category: mockCategoriesById[seed.category_id]!,
     images: mockImages(seed.id, image_count),
