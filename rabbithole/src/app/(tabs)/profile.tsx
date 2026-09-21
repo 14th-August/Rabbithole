@@ -39,11 +39,17 @@ export default function Profile() {
         Sign in to see your listings, your reviews, and your account settings.
       </Text>
 
+      {/*
+        `asChild` makes Link clone this Pressable and merge its own props in,
+        and it cannot merge into a style array — hence StyleSheet.flatten.
+        Plain `<Link style={[...]}>` elsewhere is fine; it renders a Text, which
+        accepts arrays. Only the asChild path needs this.
+      */}
       <Link href="/sign-in" asChild>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Sign in"
-          style={[
+          style={StyleSheet.flatten([
             styles.button,
             {
               minHeight: layout.tapTargetMin,
@@ -52,7 +58,7 @@ export default function Profile() {
               marginTop: spacing.xl,
               paddingHorizontal: spacing.xl,
             },
-          ]}
+          ])}
         >
           <Text style={[typography.bodyStrong, { color: colors.brand.onBrand }]}>Sign in</Text>
         </Pressable>
