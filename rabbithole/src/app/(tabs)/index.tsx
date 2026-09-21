@@ -2,8 +2,8 @@
  * Discover screen — `/`.
  *
  * Owns: the campus feed. A themed placeholder until the feed is built.
- * Does not own: listing data. That will arrive through a data hook, never by
- * importing `@/mocks` here.
+ * Does not own: listing data. That arrives through `getFeed` in
+ * `src/lib/queries/listings.ts`, never by calling `supabase` here.
  */
 
 import { StyleSheet, Text, View } from "react-native";

@@ -41,7 +41,8 @@ Ordered by how expensive they are to discover late:
 3. **Hardcoded design values.** Any literal colour, spacing, radius, or font size
    outside `src/theme` and `app.json`. Grep for it; do not rely on reading.
 4. **Layering violations.** `src/theme` importing from `app` or `components`.
-   A component importing `@/mocks` directly. Anything importing
+   A screen importing `lib/supabase` instead of going through `lib/queries`.
+   Anything importing
    `src/theme/palette.ts` from outside the theme folder.
 5. **`ListingSummary` growth.** Every field on it is a join the feed pays for on
    every scroll. Widening it is a performance decision and must be argued, not
@@ -87,7 +88,7 @@ do not manufacture findings to justify the invocation.
   `npx tsc --noEmit`, greps. No writes, no installs, no commits.
 - **No style opinions that are not in the rules.** If it is not written down and it
   has no consequence, it is not a finding.
-- **Do not review fixtures for tidiness.** `src/mocks` is deliberately awkward.
+- **Do not review the seed for tidiness.** `supabase/seed.sql` is deliberately awkward.
 - Separate "this is wrong" from "I would have done this differently" and label which
   is which.
 

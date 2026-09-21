@@ -18,23 +18,22 @@ shape, and everything that talks to Supabase.
 - **Types.** Those are `src/types`, which holds no behaviour. The split is why
   formatters live here at all.
 - **Components.** `src/components`. Nothing in this folder renders.
-- **Fixtures.** `src/mocks`, which this folder replaces.
+- **Fixtures.** Test data lives in `supabase/seed.sql`, loaded by `supabase db reset`.
 
-## The swap rule
+## The seam
 
-`src/lib/queries/` is the single place fixtures become `supabase-js` calls. No
-component imports `@/mocks` directly, so:
+`src/lib/queries/` is the single place the database is touched. Screens read
+through it, never through `supabase` directly, so:
 
 ```bash
-grep -r "@/mocks" src/app src/components
+grep -rn "lib/supabase" src/app src/components
 ```
 
-answers "what is still faked?" exactly. It must end up empty.
+answers "what is reaching past the query layer?" exactly. It must stay empty.
 
-Screens read through a query module, never through `supabase` directly. That
-indirection is what made it possible to build the whole UI against fixtures, and
-it is what will make it possible to add caching, retries, or a real fetching
-library later without touching a screen.
+That indirection is what let the whole UI be built before a database existed, and
+it is what will let caching, retries, or a query library be added later without
+touching a screen.
 
 ## Rules that live in code here
 

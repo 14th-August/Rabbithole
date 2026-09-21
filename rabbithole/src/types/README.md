@@ -4,7 +4,7 @@ Domain types. What a listing, profile, conversation, and review *are*.
 
 These are hand-written **ahead of** the database, not generated from it. Right now
 they are the only written-down schema the project has, so they are the contract
-that `src/mocks` conforms to and that the eventual SQL migration transcribes.
+that `supabase/seed.sql` conforms to and that the SQL migrations transcribe.
 
 ## The naming rule
 

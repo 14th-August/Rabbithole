@@ -44,7 +44,7 @@ with `npx expo install --check`, never `npm update`.
 ```ts
 import { useTheme } from "@/theme";          // → src/theme
 import type { ListingSummary } from "@/types";
-import { mockFeedListings } from "@/mocks";
+import { getFeed } from "@/lib/queries/listings";
 import icon from "@/assets/images/tabIcons/home.png";
 ```
 
@@ -78,13 +78,12 @@ src/app/        routes and screens
 src/components/ shared UI
 src/theme/      design tokens          ← no imports from app/components
 src/types/      domain types           ← no imports from anything but itself
-src/lib/        formatters, clients    (not created yet)
-src/mocks/      fixtures               ← dev only
+src/lib/        client, queries, formatters
 ```
 
-- **No component imports `@/mocks` directly.** Screens read through a hook or data
-  module; that module is the single place fixtures become `supabase-js` calls.
-  `grep -r "@/mocks" src/app src/components` must stay empty.
+- **No screen calls `supabase` directly.** Screens read through `src/lib/queries/`,
+  which is the single place the database is touched. `grep -rn "lib/supabase" src/app
+  src/components` must stay empty.
 - **`src/theme/palette.ts` is private to `src/theme`.** Raw ramps never leave.
 
 ## Documentation

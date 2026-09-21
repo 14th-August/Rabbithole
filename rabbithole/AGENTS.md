@@ -27,10 +27,10 @@ The git repository root is `Rabbithole/`; the Expo app lives in the nested
 | --- | --- |
 | `src/app/` | The route table. Every file in it is a URL. |
 | `src/theme/` | Design tokens — light and dark. Read `src/theme/README.md`. |
-| `src/types/` | Domain types. **Currently the only written-down schema.** Read `src/types/README.md`. |
-| `src/mocks/` | Fixtures, deliberately awkward. Read `src/mocks/README.md`. |
+| `src/types/` | Domain types, plus the generated schema. Read `src/types/README.md`. |
+| `src/lib/` | Supabase client, queries, session, formatters. Read `src/lib/README.md`. |
 | `.claude/rules/` | The standards imported above. |
-| `.claude/agents/` | `researcher`, `architecture-reviewer`, `code-tutor`, `test-engineer`. |
+| `.claude/agents/` | `researcher`, `architecture-reviewer`, `code-mentor`, `code-tutor`, `test-engineer`. |
 | `.claude/skills/` | `/daily-brief`. |
 | `../ARCHITECTURE.md` | v1/v2 system design. **Gitignored** — local only, and absent in a worktree. |
 

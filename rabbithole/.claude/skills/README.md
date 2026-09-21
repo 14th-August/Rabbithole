@@ -35,7 +35,7 @@ The greps are the part worth extending. Each one encodes a rule from
 | Check | Enforces |
 | --- | --- |
 | Hex literals in `src/app` and `src/components` | "never hardcode a colour" |
-| `@/mocks` imported by components | "no component imports fixtures directly" |
+| `lib/supabase` imported by screens | "no screen calls the database directly" |
 | `theme/palette` imported outside `src/theme` | "raw ramps never leave the theme" |
 
 **A rule that can be grepped should be grepped.** A written rule is a hope; a check

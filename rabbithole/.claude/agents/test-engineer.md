@@ -32,16 +32,16 @@ architectural decision here, not a detail — see `.claude/rules/technical-defau
 ## What to test, in priority order
 
 1. **Pure logic and derivations.** Highest value, cheapest to write, no rendering.
-   Right now that is `toListingSummary`, `toConversationSummary`, `toProfilePreview`,
-   and `counterpartyIdOf` in `src/mocks` — plus every formatter in `src/lib` once it
-   exists. `unread_count` counting only the counterparty's messages is exactly the
-   kind of off-by-one a test catches and a reviewer does not.
+   Right now that is every formatter in `src/lib/format.ts` and the error mapping in
+   `src/lib/queries/errors.ts`. `requireRows` is the one that matters most: it guards
+   a write that RLS blocks *silently*, and a bug there reports success on a write
+   that did nothing.
 2. **Formatters**, when they land. Price formatting is the one that matters:
    `0` → "Free", not "$0.00". Relative timestamps. These are pure functions with
    nasty edge cases — ideal tests.
-3. **Component rendering against the awkward fixtures.** `src/mocks` is built to
-   break naive layouts; assert that each edge case renders. A free listing, a
-   photoless listing, a `null` rating, a three-line title, a reserved badge.
+3. **Component rendering against the awkward seed rows.** `supabase/seed.sql` is
+   built to break naive layouts; assert that each edge case renders. A free listing,
+   a photoless listing, a `null` rating, a three-line title, a reserved badge.
 4. **Both colour schemes**, where a component's output depends on theme.
 5. **Accessibility**, via `getByRole` / `getByLabelText` rather than test IDs —
    querying the way a screen reader does tests the label and the behaviour at once.
@@ -52,7 +52,7 @@ architectural decision here, not a detail — see `.claude/rules/technical-defau
   tests that you typed a hex twice. Test that a component *uses* a token, not what
   the token is.
 - **Types.** TypeScript already checks those; `npx tsc --noEmit` is the test.
-- **Fixture contents.** `src/mocks` is input data, not behaviour.
+- **Seed contents.** `supabase/seed.sql` is input data, not behaviour.
 - **Third-party libraries.** Not your code.
 - **Snapshots of whole screens.** They break on every cosmetic change, teach people
   to run `-u` reflexively, and then catch nothing. A targeted assertion is worth ten
@@ -75,8 +75,9 @@ architectural decision here, not a detail — see `.claude/rules/technical-defau
   Pick one and stay consistent with whatever already exists.
 - Name tests as behaviour: `"renders Free when price_cents is 0"`, not `"test price"`.
 - One behaviour per test. A test asserting five things reports one failure and hides four.
-- Import fixtures from `@/mocks` rather than inventing new ones. They encode the
-  edge cases deliberately; parallel ad-hoc fixtures drift from reality.
+- Build fixtures from the seed rows in `supabase/seed.sql` rather than inventing
+  new ones. They encode the edge cases deliberately, and they are what the real
+  queries return; parallel ad-hoc fixtures drift from reality.
 - Follow `.claude/rules/technical-defaults.md` for style and imports. Test files are
   code and get module headers too.
 

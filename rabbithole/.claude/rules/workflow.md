@@ -8,8 +8,9 @@ How work proceeds on Rabbithole. Loaded into every session via `AGENTS.md`.
    any Expo or React Native API you are about to touch. SDK 57 changed things;
    memory and older tutorials are unreliable. This is not optional.
 2. **Check whether the thing already exists.** `src/theme` has tokens, `src/types`
-   has domain types, `src/mocks` has fixtures. A new colour constant, a new
-   `Listing` interface, or a new fake seller is almost always a duplicate.
+   has domain types, `src/lib` has the client, queries and formatters. A new colour
+   constant, a new `Listing` interface, or a second date formatter is almost always
+   a duplicate.
 3. **Read the neighbouring file** before adding a sibling. Match its structure,
    comment density, and naming rather than importing a different style.
 
@@ -30,8 +31,9 @@ A change is not done until all of these hold:
   and keep going — do not silently expand the change.
 - **Finish what was asked.** If part of the scope is blocked, complete everything
   else and state plainly what was left and why.
-- **Do not tidy fixtures.** `src/mocks` is deliberately awkward. If a fixture
-  surfaced a layout bug, fix the layout.
+- **Do not tidy the seed.** `supabase/seed.sql` is deliberately awkward — a free
+  item, a photoless listing, a null rating. If a seed row surfaced a layout bug,
+  fix the layout.
 
 ## Git
 
@@ -49,7 +51,7 @@ parallel; non-overlapping directories do.
 
 | Owner | May write | Reads only |
 | --- | --- | --- |
-| UI session | `src/theme`, `src/components`, `src/app`, `src/types`, `src/mocks` | — |
+| UI session | `src/theme`, `src/components`, `src/app`, `src/types`, `src/lib` | — |
 | Backend session | `supabase/`, migration and seed files | `src/types` |
 | Any session | its own scratch files | — |
 

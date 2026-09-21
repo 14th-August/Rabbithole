@@ -43,8 +43,8 @@ but still report drift found anywhere.
 ### Convention drift — hardcoded colours outside the theme (count per file)
 !`grep -rn "#[0-9a-fA-F]\{3,8\}\b" src/app src/components 2>/dev/null | awk -F: '{print $1}' | sort | uniq -c | sort -rn || echo "(none)"`
 
-### Convention drift — components importing fixtures directly
-!`grep -rln "@/mocks" src/app src/components 2>/dev/null || echo "(none — good)"`
+### Convention drift — screens reaching past the query layer
+!`grep -rln "lib/supabase" src/app src/components 2>/dev/null || echo "(none — good)"`
 
 ### Convention drift — raw palette imports outside the theme
 !`grep -rn "theme/palette" src --include="*.ts" --include="*.tsx" 2>/dev/null | grep -v "^src/theme/" || echo "(none — good)"`
@@ -84,8 +84,9 @@ Only report what the checks above actually found. For each:
 - **Hardcoded values** — file:line for any colour literal outside `src/theme` and
   `app.json`. Note that the five placeholder tab screens are a known, accepted
   exception until they are replaced.
-- **Fixture leakage** — any component importing `@/mocks` directly. This should be
-  empty; if it is not, it is the most important line in the brief.
+- **Query-layer bypass** — any screen importing `lib/supabase` instead of going
+  through `lib/queries`. This should be empty; if it is not, it is the most
+  important line in the brief.
 - **Palette leakage** — any import of `theme/palette` from outside `src/theme`.
 - **Open markers** — TODO/FIXME worth acting on.
 

@@ -220,7 +220,7 @@ Ionicons until someone decides otherwise.
 
 ## Two follow-ups this creates
 
-**`src/mocks` is now unrepresentative.** Nine of the twelve fixtures are textbooks or study materials. The set no longer exercises the cases this document cares about — there's no four-figure price, no clothing item where the photo *is* the identification, no large item whose pickup is genuinely hard, and no category with zero listings. Worth broadening the fixtures before building `ListingCard` against them, since the whole point of that set is to break naive layouts.
+**The seed is now unrepresentative.** Nine of the twelve fixtures are textbooks or study materials. The set no longer exercises the cases this document cares about — there's no four-figure price, no clothing item where the photo *is* the identification, no large item whose pickup is genuinely hard, and no category with zero listings. Worth broadening `supabase/seed.sql` before building `ListingCard` against it, since the whole point of that set is to break naive layouts.
 
 **Two fixture rationales in `listings.ts` reference reasoning that's now changed** — the nursing bundle's comment frames itself around textbook titles, and `listingAspectRatio`'s "books and furniture read badly in a square" note in `spacing.ts` should be re-justified around photo diversity rather than book covers.
 
