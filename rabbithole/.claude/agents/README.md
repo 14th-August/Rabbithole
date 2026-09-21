@@ -9,7 +9,8 @@ the `Agent` tool, or asked for by name ("use the code-tutor subagent").
 | --- | --- | --- | --- | --- |
 | `researcher` | Establishes facts before they are built on — versioned APIs, library behaviour, trade-offs | Read, Glob, Grep, WebFetch, WebSearch | sonnet | **No** |
 | `architecture-reviewer` | Judges whether code fits the system and the v1/v2 plan | Read, Glob, Grep, Bash | opus (high) | **No** |
-| `code-tutor` | Explains files, patterns, and stack concepts to someone learning | Read, Glob, Grep, WebFetch | opus | **No** |
+| `code-mentor` | Designs an implementation *before* it is written — placement, reuse, skeleton, trade-offs, first step | Read, Glob, Grep, WebFetch | opus (high) | **No** |
+| `code-tutor` | Explains files, patterns, and stack concepts that already exist | Read, Glob, Grep, WebFetch | opus | **No** |
 | `test-engineer` | Writes and runs tests; sets up the harness | Read, Write, Edit, Glob, Grep, Bash | sonnet (high) | Tests only |
 
 **Three of four are read-only by design.** Tools are the real permission boundary —

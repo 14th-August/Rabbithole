@@ -79,7 +79,8 @@ Naming an agent explicitly always overrides this table.
 | --- | --- | --- |
 | "how does X work", "what are the trade-offs", "is X supported in SDK 57" — anything resting on a fact nobody in the session has verified | `researcher` | Findings with sources. No edits. |
 | "is this right", "does this fit", "review this", "should I refactor" — or a feature just landed | `architecture-reviewer` | Findings against these rules and the v1/v2 plan. No edits. |
-| "what does this file do", "why is it written this way", "explain", "teach me" | `code-tutor` | An explanation pitched at someone learning the stack. No edits. |
+| "how do I build X", "where should this go", starting any feature — the question is how to implement something that does not exist yet | `code-mentor` | An implementation brief: where it goes, what to reuse, the skeleton, the trade-offs, and the one first step. No code. |
+| "what does this file do", "why is it written this way", "explain", "teach me" — about code that already exists | `code-tutor` | An explanation pitched at someone learning the stack. No edits. |
 | "write tests", "add a regression test", a bug that needs one, harness setup | `test-engineer` | Test files, run. Never edits app code to make them pass. |
 | "can Claude Code…", hooks, slash commands, MCP, settings, keybindings, Agent SDK, Claude API | `claude-code-guide` | An answer from current docs rather than model memory. |
 | "where is X", "which files do Y" — a sweep across many files where only the conclusion matters | `Explore` | Locations and a conclusion, not file dumps. |
@@ -100,11 +101,31 @@ is not a routing signal — a matching *kind of work* is. Breadth is not a reaso
 spawn; a different mode of work is.
 
 Independent routes spawn in one batch and run in parallel. Dependent ones do not:
+**`code-mentor` and `researcher` run in parallel at the start of a feature** —
+research establishes what an API actually does, the mentor decides how this
+codebase should use it. Neither writes code, and the brief comes back before
+implementation starts, not after.
+
 `researcher` informs a decision, so it runs before; `architecture-reviewer` judges
 code, so it runs after that code exists.
 
 **Relay what an agent returns in your own words.** Its report is never shown to the
 user — an unrelayed finding is a finding that did not happen.
+
+## Pace
+
+**One feature at a time, briefed before it is built.**
+
+The person building this is learning the stack by building it. Code they did not
+follow being written is code they cannot maintain — a large correct diff is a
+worse outcome than a small one they understand.
+
+- Run `code-mentor` before implementing a feature, not after.
+- Then write **one module or one screen**, walk through what it does, and stop.
+- Prefer the smallest, most self-contained piece first, so each is
+  understandable before anything depends on it.
+- A plan may list eight files. Executing all eight without pausing is not the
+  same thing, and is not wanted.
 
 ## Asking versus assuming
 
