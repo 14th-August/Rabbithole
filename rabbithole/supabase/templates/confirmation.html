@@ -1,0 +1,21 @@
+<!--
+  Signup confirmation email.
+
+  Sends a 6-digit code ({{ .Token }}) rather than a link
+  ({{ .ConfirmationURL }}). Links require deep-linking back into the app, which
+  is fragile across mobile mail clients and needs per-platform configuration;
+  a code the user types works identically on iOS, Android, and web.
+
+  The hosted project needs the equivalent set by hand:
+  Dashboard -> Auth -> Email Templates -> Confirm signup.
+-->
+<h2>Confirm your Rabbithole account</h2>
+
+<p>Enter this code in the app to finish signing up:</p>
+
+<p style="font-size: 28px; letter-spacing: 6px; font-weight: 700; font-family: monospace;">
+  {{ .Token }}
+</p>
+
+<p>The code expires in one hour. If you didn't sign up for Rabbithole, you can
+ignore this email.</p>
