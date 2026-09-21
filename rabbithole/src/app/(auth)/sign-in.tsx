@@ -61,7 +61,7 @@ export default function SignIn() {
       <TextInput
         value={form.email}
         onChangeText={(email) => setForm({ ...form, email })}
-        placeholder="you@myviu.ca"
+        placeholder="you@my.viu.ca"
         placeholderTextColor={colors.text.placeholder}
         keyboardType="email-address"
         autoCapitalize="none"

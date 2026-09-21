@@ -23,7 +23,7 @@ export interface Profile {
   avatar_path: string | null;
 
   /**
-   * When the account's `@viu.ca` address was last confirmed, or `null` if never.
+   * When the account's `@my.viu.ca` address was last confirmed, or `null` if never.
    * Nullable rather than a boolean because VIU addresses expire at graduation and
    * we may need to re-verify — a timestamp can answer "how stale is this?", a
    * boolean cannot. See ARCHITECTURE.md → Open questions.
