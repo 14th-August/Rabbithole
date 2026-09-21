@@ -1,19 +1,31 @@
 /**
  * Sign-up screen — `/sign-up`.
  *
- * Owns: the sign-up form and the values typed into it.
- * Does not own: creating the account, or checking the email really belongs to
- * VIU. There is no backend yet, so `handleSubmit` is a placeholder and the
- * campus-email line is a prompt, not a rule this screen enforces.
+ * Owns: the sign-up form, the values typed into it, and what to show while the
+ * request is in flight.
+ * Does not own: creating the account. That is `signUp` in `src/lib/auth.ts`.
+ * Nor enforcing the VIU rule — the gate is a server-side auth hook, so this
+ * screen only relays whatever it says.
  *
  * Deliberately mirrors `sign-in.tsx` line for line so the pair reads as one
  * pattern rather than two.
  */
 
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
+import { signUp } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
+import { useAsync } from "@/lib/useAsync";
 import { useTheme } from "@/theme";
 
 /**
@@ -31,14 +43,32 @@ interface SignUpForm {
 /** The sign-up screen. */
 export default function SignUp() {
   const { colors, spacing, radius, layout, typography } = useTheme();
+  const router = useRouter();
 
   const [form, setForm] = useState<SignUpForm>({ name: "", email: "", password: "" });
+
+  // The client is bound once here. `signUp` takes it as an argument so it can
+  // run outside the app, but a screen only ever has the one.
+  const submit = useAsync((input: SignUpForm) => signUp(supabase, input));
 
   const isComplete =
     form.name.trim() !== "" && form.email.trim() !== "" && form.password !== "";
 
-  function handleSubmit() {
-    // Placeholder. Real account creation lands here once there is a backend.
+  /** Update one field, and clear any error so a retry starts clean. */
+  function updateField(patch: Partial<SignUpForm>) {
+    setForm({ ...form, ...patch });
+    submit.clearError();
+  }
+
+  async function handleSubmit() {
+    const created = await submit.run(form);
+    if (!created) return;
+
+    // Confirmation is on, so no session exists yet — `signUp` returned a user
+    // and no tokens. The address travels as a param because the verify screen
+    // needs it for both `verifyOtp` and resend, and there is nowhere else to
+    // read it from before a session exists.
+    router.push({ pathname: "/verify", params: { email: created.email } });
   }
 
   // All three inputs look the same, so the style lives in one place.
@@ -65,7 +95,8 @@ export default function SignUp() {
       </Text>
       <TextInput
         value={form.name}
-        onChangeText={(name) => setForm({ ...form, name })}
+        onChangeText={(name) => updateField({ name })}
+        editable={!submit.isPending}
         placeholder="Alex Chen"
         placeholderTextColor={colors.text.placeholder}
         accessibilityLabel="Your name"
@@ -77,7 +108,8 @@ export default function SignUp() {
       </Text>
       <TextInput
         value={form.email}
-        onChangeText={(email) => setForm({ ...form, email })}
+        onChangeText={(email) => updateField({ email })}
+        editable={!submit.isPending}
         placeholder="you@my.viu.ca"
         placeholderTextColor={colors.text.placeholder}
         keyboardType="email-address"
@@ -91,8 +123,9 @@ export default function SignUp() {
       </Text>
       <TextInput
         value={form.password}
-        onChangeText={(password) => setForm({ ...form, password })}
-        placeholder="At least 8 characters"
+        onChangeText={(password) => updateField({ password })}
+        editable={!submit.isPending}
+        placeholder="At least 6 characters"
         placeholderTextColor={colors.text.placeholder}
         secureTextEntry
         autoCapitalize="none"
@@ -100,9 +133,27 @@ export default function SignUp() {
         style={[typography.body, inputStyle, { marginTop: spacing.xs }]}
       />
 
+      {submit.error ? (
+        <View
+          style={[
+            styles.error,
+            {
+              backgroundColor: colors.status.dangerSubtle,
+              borderRadius: radius.md,
+              padding: spacing.md,
+              marginTop: spacing.md,
+            },
+          ]}
+        >
+          <Text style={[typography.footnote, { color: colors.status.danger }]}>
+            {submit.error}
+          </Text>
+        </View>
+      ) : null}
+
       <Pressable
         onPress={handleSubmit}
-        disabled={!isComplete}
+        disabled={!isComplete || submit.isPending}
         accessibilityRole="button"
         accessibilityLabel="Create account"
         style={[
@@ -112,13 +163,17 @@ export default function SignUp() {
             borderRadius: radius.md,
             backgroundColor: colors.brand.default,
             marginTop: spacing.xl,
-            opacity: isComplete ? 1 : 0.5,
+            opacity: isComplete && !submit.isPending ? 1 : 0.5,
           },
         ]}
       >
-        <Text style={[typography.bodyStrong, { color: colors.brand.onBrand }]}>
-          Create account
-        </Text>
+        {submit.isPending ? (
+          <ActivityIndicator color={colors.brand.onBrand} />
+        ) : (
+          <Text style={[typography.bodyStrong, { color: colors.brand.onBrand }]}>
+            Create account
+          </Text>
+        )}
       </Pressable>
 
       <View style={[styles.footer, { marginTop: spacing.lg }]}>
@@ -137,6 +192,9 @@ const styles = StyleSheet.create({
   screen: {
     flexGrow: 1,
     justifyContent: "center",
+  },
+  error: {
+    width: "100%",
   },
   button: {
     alignItems: "center",
