@@ -34,7 +34,17 @@ export type {
  * Regenerate after every migration and diff the two. A difference is either a
  * schema mistake or a UI assumption that was never true.
  */
-export type { Database, Json } from "./database";
+export type {
+  Database,
+  Json,
+  // The generated helper generics. Re-exported so a query module can say
+  // `TablesInsert<"listings">` without reaching past this barrel, which the
+  // import rule forbids.
+  Tables,
+  TablesInsert,
+  TablesUpdate,
+  Enums,
+} from "./database";
 
 export type { Profile, ProfilePreview } from "./profile";
 

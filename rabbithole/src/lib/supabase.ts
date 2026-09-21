@@ -18,8 +18,27 @@
 // sign-outs rather than an error.
 import "expo-sqlite/localStorage/install";
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { AppState, Platform } from "react-native";
+
+import type { Database } from "@/types";
+
+/**
+ * The typed client, as a type.
+ *
+ * Every function in `src/lib/queries/` takes one of these as its first argument
+ * rather than importing the singleton below. Two reasons, both hard:
+ *
+ * - This module imports `expo-sqlite`, which needs the native bridge. A plain
+ *   Node script — `scripts/try-queries.ts` — could never load it, so a
+ *   module-level singleton would make the query layer untestable outside the app.
+ * - Testing RLS means running the same query as two different users at once,
+ *   which needs two clients.
+ *
+ * Importing this type with `import type` is safe from Node: TypeScript erases
+ * type-only imports entirely, so nothing from this file reaches the runtime.
+ */
+export type Db = SupabaseClient<Database>;
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_KEY;
@@ -40,8 +59,13 @@ if (!supabaseUrl || !supabaseKey) {
  * write a row is an RLS policy in the database, so a query here returns only
  * what the signed-in user is allowed to see. Do not add ownership filters for
  * security — add them only to narrow a result set.
+ *
+ * The `<Database>` generic is what makes every query typed. Without it
+ * `.from("listings").select()` returns `any`, and nothing downstream can catch a
+ * column that no longer exists. Regenerate `src/types/database.ts` after every
+ * migration so this stays honest.
  */
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     storage: localStorage,
     autoRefreshToken: true,
