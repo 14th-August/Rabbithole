@@ -66,10 +66,29 @@ export interface Colors {
      *
      * White in light mode, but near-black in dark mode: the dark scheme lifts the
      * brand blue to `blue[300]` for legibility against a dark page, and white text
-     * on `#66B6F7` fails contrast badly. This token existing is what stops that
+     * on `#66A6FF` fails contrast badly. This token existing is what stops that
      * bug — a hardcoded `color: "#fff"` on a primary button would ship it.
      */
     onBrand: string;
+    /**
+     * The launch background.
+     *
+     * The one token that is deliberately **identical in both schemes**. A native
+     * splash screen is painted by the OS from a fixed colour in `app.json`, long
+     * before React or `useColorScheme` exist, so anything rendered on top of it
+     * has to match that one value or the handover flickers.
+     */
+    launch: string;
+    /**
+     * Foreground on {@link launch} — the spinner, and any text beside it.
+     *
+     * Fixed in both schemes for the same reason `launch` is. `onBrand` cannot be
+     * used here: it is near-black in dark mode, which is correct on the lifted
+     * `blue[300]` of a dark-mode button but invisible on the launch screen's
+     * fixed `blue[500]`. It is also simply the wrong colour — the rabbit on that
+     * screen is white, and the spinner beside it should match.
+     */
+    onLaunch: string;
   };
 
   status: {
@@ -114,6 +133,9 @@ const light: Colors = {
     pressed: palette.blue[600],
     subtle: palette.blue[50],
     onBrand: palette.neutral[0],
+    // Mirrors the `expo-splash-screen` backgroundColor in app.json.
+    launch: palette.blue[500],
+    onLaunch: palette.neutral[0],
   },
 
   status: {
@@ -160,6 +182,11 @@ const dark: Colors = {
     pressed: palette.blue[400],
     subtle: "#10243A",
     onBrand: "#0A1622",
+    // Not lifted like the rest of the brand, and that is the point: the native
+    // splash is `blue[500]` in every scheme, so this has to be too — and so is
+    // the white that sits on it.
+    launch: palette.blue[500],
+    onLaunch: palette.neutral[0],
   },
 
   status: {

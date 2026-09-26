@@ -10,23 +10,29 @@
  * mode, because `neutral[200]` is a light-mode border and a dark-mode nothing.
  * `colors.ts` is where ramps become meanings, and meanings are what flip.
  *
- * The blue ramp is built around `#208AEF` (step 500), the brand blue already used
- * by the splash screen and tab bar. `blue[50]` is `#E6F4FE`, the Android adaptive
- * icon background. Both previously existed only in `app.json`.
+ * The blue ramp is built around `#0165F2` (step 500), sampled from the app icon.
+ * The rabbit logo is the first colour decision anyone actually made here, so the
+ * ramp follows it rather than the other way round. `app.json` mirrors step 500 for
+ * the splash and adaptive-icon backgrounds.
+ *
+ * Worth knowing why this changed: the previous brand blue (`#208AEF`, inherited
+ * from the Expo starter template) put white-on-brand at 3.53:1 — under the 4.5:1
+ * this project targets for body text. `#0165F2` is darker and reaches 5.07:1, so
+ * primary buttons stopped failing contrast as a side effect of adopting the logo.
  */
 
 export const palette = {
   blue: {
-    50: "#E6F4FE",
-    100: "#C9E6FD",
-    200: "#9BD1FB",
-    300: "#66B6F7",
-    400: "#3B9DF3",
-    500: "#208AEF",
-    600: "#1570CC",
-    700: "#1159A3",
-    800: "#0E477F",
-    900: "#0B3560",
+    50: "#E5F0FF",
+    100: "#C7DEFF",
+    200: "#99C3FF",
+    300: "#66A6FF",
+    400: "#2E85FF",
+    500: "#0165F2",
+    600: "#0155CB",
+    700: "#0244A2",
+    800: "#03347C",
+    900: "#05265C",
   },
 
   /** Slightly blue-tinted greys, so neutrals sit with the brand rather than against it. */

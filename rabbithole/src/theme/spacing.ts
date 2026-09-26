@@ -58,6 +58,16 @@ export const layout = {
   /** Hairline that stays 1 physical pixel across densities. */
   borderWidth: 1,
 
+  /**
+   * 76 — width of the rabbit on the launch screen.
+   *
+   * Must equal `imageWidth` in the `expo-splash-screen` config in app.json. The
+   * OS draws the native splash from that value before any JavaScript runs, so a
+   * mismatch here makes the mark visibly jump at the handover. One of the very
+   * few numbers in this file that is pinned to something outside it.
+   */
+  splashMarkWidth: 76,
+
   /** Listing cover images. 4:3 reads better than square for books and furniture. */
   listingAspectRatio: 4 / 3,
 } as const;

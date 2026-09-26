@@ -37,12 +37,18 @@ const { colors, spacing, typography, radius } = useTheme();
 </View>
 ```
 
-The single permitted exception is `app.json`, which carries `#208AEF` and `#E6F4FE`
-because Expo config cannot import TypeScript. Both are mirrored in `palette.ts`.
+The single permitted exception is `app.json`, which carries `#0165F2` because Expo
+config cannot import TypeScript. It is mirrored in `palette.ts` as `blue[500]`.
 
-**2. Every component is a light *and* dark component.** `userInterfaceStyle` is
-`automatic`, so the scheme flips underneath you at runtime. Check both before
-calling anything done — `Cmd+Shift+A` in the iOS simulator.
+**2. The app is pinned to light, for now.** `userInterfaceStyle` is `light` in
+`app.json`, and the root layout wraps everything in `<ThemeProvider scheme="light">`.
+Every screen is a white page whatever the device's appearance is set to.
+
+This is a pause, not a deletion. Both halves of every token pair still exist, and
+every component still resolves through `useTheme()` — so dark mode comes back by
+deleting one prop in `src/app/_layout.tsx`. That only stays true while rule 1
+holds: the moment a screen hardcodes `#FFF` or `#000` because "it's light
+anyway", the one-line change stops working and the audit is manual again.
 
 **3. Never import `src/theme/palette.ts` outside `src/theme`.** Ramps are
 appearances; components consume meanings. `neutral[200]` is a light-mode border and
