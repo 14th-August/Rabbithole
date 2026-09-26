@@ -112,6 +112,16 @@ export default function AuthLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
+            // Instant swap, no slide. These screens are the same layout with
+            // different fields — the logo and heading sit in identical
+            // positions — so animating between them slides a near-identical
+            // image across the screen, which reads as lag rather than motion.
+            // Cutting straight to the new one is both faster and calmer.
+            animation: "none",
+            // The back-swipe is a swipe too, and with no animation to drive it
+            // would be a gesture with nothing to show. The chevron in this
+            // layout is the way back.
+            gestureEnabled: false,
             // Stops a screen re-rendering while it is blurred. Without it both
             // screens stay live through the whole push, so every keystroke and
             // state change on the one being animated away costs frames on the

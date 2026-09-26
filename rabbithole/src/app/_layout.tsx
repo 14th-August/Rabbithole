@@ -63,6 +63,10 @@ function RootNavigator() {
     <Stack
       screenOptions={{
         headerShown: false,
+        // Matches the auth stack: signing in or out swaps the whole route
+        // group, and sliding an entire app section in looks like a stall. The
+        // guard flips and the new group is simply there.
+        animation: "none",
         // Explicit, because React Navigation's default theme paints #F2F2F2 in
         // light and near-black in dark — neither of which is one of our tokens.
         // Any region a screen does not cover itself falls through to this, and a
