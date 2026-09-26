@@ -14,6 +14,7 @@
 import { Stack } from "expo-router";
 
 import { BootScreen } from "@/components/BootScreen";
+import { WelcomeOverlay } from "@/components/WelcomeOverlay";
 import { SessionProvider, useSession } from "@/lib/session";
 import { ThemeProvider, useTheme } from "@/theme";
 
@@ -47,7 +48,7 @@ export default function RootLayout() {
  * provider, and a component cannot consume a context it renders itself.
  */
 function RootNavigator() {
-  const { session, isLoading } = useSession();
+  const { session, profile, isLoading } = useSession();
   const { colors } = useTheme();
 
   // The persisted session is read asynchronously, so rendering the navigator
@@ -60,34 +61,60 @@ function RootNavigator() {
   const isSignedIn = session !== null;
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        // Matches the auth stack: signing in or out swaps the whole route
-        // group, and sliding an entire app section in looks like a stall. The
-        // guard flips and the new group is simply there.
-        animation: "none",
-        // Explicit, because React Navigation's default theme paints #F2F2F2 in
-        // light and near-black in dark — neither of which is one of our tokens.
-        // Any region a screen does not cover itself falls through to this, and a
-        // mismatched fallback reads as a border around the app.
-        contentStyle: { backgroundColor: colors.background },
-      }}
-    >
-      {/*
-        Declared first on purpose. SDK 57 has no `redirectTo` on Stack.Protected
-        — that landed in SDK 58 — so a failed guard falls back to the *first
-        available screen*. Listing `(auth)` ahead of `(tabs)` is therefore what
-        makes sign-in the screen an unauthenticated user lands on, and
-        `(auth)/_layout.tsx` names `sign-in` as the anchor within the group.
-      */}
-      <Stack.Protected guard={!isSignedIn}>
-        <Stack.Screen name="(auth)" />
-      </Stack.Protected>
+    <>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          // Matches the auth stack: signing in or out swaps the whole route
+          // group, and sliding an entire app section in looks like a stall. The
+          // guard flips and the new group is simply there.
+          animation: "none",
+          // Explicit, because React Navigation's default theme paints #F2F2F2 in
+          // light and near-black in dark — neither of which is one of our
+          // tokens. Any region a screen does not cover itself falls through to
+          // this, and a mismatched fallback reads as a border around the app.
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        {/*
+          Declared first on purpose. SDK 57 has no `redirectTo` on
+          Stack.Protected — that landed in SDK 58 — so a failed guard falls back
+          to the *first available screen*. Listing `(auth)` ahead of `(tabs)` is
+          therefore what makes sign-in the screen an unauthenticated user lands
+          on, and `(auth)/_layout.tsx` names `sign-in` as the anchor.
+        */}
+        <Stack.Protected guard={!isSignedIn}>
+          <Stack.Screen name="(auth)" />
+        </Stack.Protected>
 
-      <Stack.Protected guard={isSignedIn}>
-        <Stack.Screen name="(tabs)" />
-      </Stack.Protected>
-    </Stack>
+        <Stack.Protected guard={isSignedIn}>
+          <Stack.Screen name="(tabs)" />
+        </Stack.Protected>
+      </Stack>
+
+      {/*
+        Sits over the navigator rather than inside it, so the tabs are already
+        mounted and settled behind the greeting — it fades to a finished screen
+        instead of to a loading one.
+
+        Mounted unconditionally for anyone signed in. It decides for itself
+        whether a welcome is owed, and renders nothing at all when it is not, so
+        the condition lives in one place rather than being restated here.
+
+        `display_name` can be null for a moment while the profiles row loads, so
+        the user metadata set at signup is the fallback — it arrives with the
+        session itself and is the same name the trigger wrote.
+      */}
+      {isSignedIn ? (
+        <WelcomeOverlay
+          userId={session.user.id}
+          name={
+            profile?.display_name ??
+            (session.user.user_metadata.display_name as string | undefined) ??
+            "there"
+          }
+        />
+      ) : null}
+    </>
   );
 }

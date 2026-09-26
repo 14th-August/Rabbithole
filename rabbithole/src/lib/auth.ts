@@ -19,6 +19,7 @@ import type { AsyncResult } from "@/lib/useAsync";
 
 import { fail, ok } from "./queries/errors";
 import { clearSignInStamp, markSignedIn } from "./sessionAge";
+import { markWelcomePending } from "./welcome";
 
 /**
  * How long the resend button stays disabled, in seconds.
@@ -209,6 +210,11 @@ export async function confirmSignUp(
   // Entering a correct code proves ownership exactly as a password does, and it
   // returns a session, so it starts the five-day clock too.
   markSignedIn();
+
+  // The only moment in the app where an account is provably new: confirmation
+  // happens exactly once, and it is the first session that account ever holds.
+  // Flagging anywhere else — sign-in, say — would greet returning users.
+  markWelcomePending(data.session.user.id);
 
   return ok(data.session);
 }
