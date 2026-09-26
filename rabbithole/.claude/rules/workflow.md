@@ -19,7 +19,8 @@ How work proceeds on Rabbithole. Loaded into every session via `AGENTS.md`.
 A change is not done until all of these hold:
 
 - [ ] `npx tsc --noEmit` exits clean.
-- [ ] Rendered and eyeballed in **both** light and dark. Not "it should be fine".
+- [ ] Rendered and eyeballed on a device. Not "it should be fine". Only the light
+      scheme ships today — see design rule 2 — so one pass, but an actual one.
 - [ ] No hardcoded colour, spacing, radius, or font size — everything from `useTheme()`.
 - [ ] Module header present, exported symbols carry TSDoc.
 - [ ] Empty, loading, and error states considered for anything that renders data.
