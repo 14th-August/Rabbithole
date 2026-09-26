@@ -15,7 +15,6 @@
  * same spacing rhythm, same pill geometry.
  */
 
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { Link, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
@@ -30,6 +29,7 @@ import {
 } from "react-native";
 
 import logo from "@/assets/images/logo-round.png";
+import { FieldError } from "@/components/FieldError";
 import { RESEND_COOLDOWN_SECONDS, confirmSignUp, resendSignUpCode } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/useAsync";
@@ -86,7 +86,9 @@ export default function Verify() {
     paddingHorizontal: spacing.lg,
     borderRadius: radius.pill,
     borderWidth: layout.borderWidth,
-    borderColor: submit.error !== null ? colors.status.danger : colors.border,
+    // Invisible at rest, red when the code is rejected. The width never changes,
+    // so colouring it in cannot shift the layout.
+    borderColor: submit.error !== null ? colors.status.danger : colors.surfaceSunken,
     backgroundColor: colors.surfaceSunken,
     color: colors.text.primary,
   };
@@ -224,29 +226,8 @@ export default function Verify() {
         ]}
       />
 
-      {submit.error !== null ? (
-        <View
-          // Without these a rejected code is silent to a screen reader.
-          accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
-          style={[
-            styles.fullWidth,
-            styles.errorRow,
-            {
-              backgroundColor: colors.status.dangerSubtle,
-              borderRadius: radius.lg,
-              padding: spacing.md,
-              marginTop: spacing.md,
-              gap: spacing.sm,
-            },
-          ]}
-        >
-          <Ionicons name="alert-circle" size={18} color={colors.status.danger} />
-          <Text style={[typography.footnote, styles.errorText, { color: colors.status.danger }]}>
-            {submit.error}
-          </Text>
-        </View>
-      ) : null}
+      {/* Genuinely field-level here: the only thing that can be wrong is the code. */}
+      {submit.error !== null ? <FieldError message={submit.error} /> : null}
 
       <Pressable
         onPress={handleSubmit}
@@ -355,15 +336,6 @@ const styles = StyleSheet.create({
   },
   code: {
     textAlign: "center",
-  },
-  errorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  errorText: {
-    // Takes the remaining width so a long sentence wraps beside the icon rather
-    // than pushing it off the row.
-    flex: 1,
   },
   button: {
     alignItems: "center",

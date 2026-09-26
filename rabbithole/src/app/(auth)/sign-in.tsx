@@ -122,7 +122,10 @@ export default function SignIn() {
     paddingHorizontal: spacing.lg,
     borderRadius: radius.pill,
     borderWidth: layout.borderWidth,
-    borderColor: colors.border,
+    // No visible outline at rest. The width stays so an error can colour it in
+    // without the field growing by a pixel and nudging everything below it;
+    // matching the fill is what hides it rather than removing it.
+    borderColor: colors.surfaceSunken,
     backgroundColor: colors.surfaceSunken,
   };
 
@@ -179,7 +182,7 @@ export default function SignIn() {
             color: colors.text.primary,
             marginTop: spacing.xxl,
             // Only this field, and only when this field is the problem.
-            borderColor: fieldError !== null ? colors.status.danger : colors.border,
+            borderColor: fieldError !== null ? colors.status.danger : colors.surfaceSunken,
           },
         ]}
       />
@@ -214,31 +217,14 @@ export default function SignIn() {
         </Pressable>
       </View>
 
-      {submit.error !== null ? (
-        <View
-          // `alert` covers VoiceOver, `accessibilityLiveRegion` covers TalkBack.
-          // Without them a failed sign-in is silent to a screen reader: the
-          // button simply stops spinning and nothing says why.
-          accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
-          style={[
-            styles.fullWidth,
-            styles.errorRow,
-            {
-              backgroundColor: colors.status.dangerSubtle,
-              borderRadius: radius.lg,
-              padding: spacing.md,
-              marginTop: spacing.md,
-              gap: spacing.sm,
-            },
-          ]}
-        >
-          <Ionicons name="alert-circle" size={18} color={colors.status.danger} />
-          <Text style={[typography.footnote, styles.errorText, { color: colors.status.danger }]}>
-            {submit.error}
-          </Text>
-        </View>
-      ) : null}
+      {/*
+        Same inline treatment as a field error, but attached to no field. The
+        server returns `invalid_credentials` for a wrong password and an unknown
+        address alike — deliberately, so sign-in cannot enumerate accounts — so
+        reddening an input would claim to know what the API refused to say.
+        Sitting below both, above the button, it reads as the form's answer.
+      */}
+      {submit.error !== null ? <FieldError message={submit.error} /> : null}
 
       <Pressable
         onPress={handleSubmit}
@@ -294,15 +280,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   passwordInput: {
-    flex: 1,
-  },
-  errorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  errorText: {
-    // Takes the remaining width so a long sentence wraps beside the icon rather
-    // than pushing it off the row.
     flex: 1,
   },
   button: {

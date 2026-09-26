@@ -147,7 +147,10 @@ export default function SignUp() {
     paddingHorizontal: spacing.lg,
     borderRadius: radius.pill,
     borderWidth: layout.borderWidth,
-    borderColor: colors.border,
+    // No visible outline at rest. The width stays so an error can colour it in
+    // without the field growing by a pixel and nudging everything below it;
+    // matching the fill is what hides it rather than removing it.
+    borderColor: colors.surfaceSunken,
     backgroundColor: colors.surfaceSunken,
   };
 
@@ -223,7 +226,7 @@ export default function SignUp() {
             color: colors.text.primary,
             marginTop: spacing.md,
             borderColor:
-              fieldError?.field === "email" ? colors.status.danger : colors.border,
+              fieldError?.field === "email" ? colors.status.danger : colors.surfaceSunken,
           },
         ]}
       />
@@ -281,7 +284,9 @@ export default function SignUp() {
             color: colors.text.primary,
             marginTop: spacing.md,
             borderColor:
-              fieldError?.field === "confirmPassword" ? colors.status.danger : colors.border,
+              fieldError?.field === "confirmPassword"
+                ? colors.status.danger
+                : colors.surfaceSunken,
           },
         ]}
       />
@@ -290,30 +295,12 @@ export default function SignUp() {
         <FieldError message={fieldError.message} />
       ) : null}
 
-      {submit.error !== null ? (
-        <View
-          // Without these a failed signup is silent to a screen reader: the
-          // button stops spinning and nothing says why.
-          accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
-          style={[
-            styles.fullWidth,
-            styles.errorRow,
-            {
-              backgroundColor: colors.status.dangerSubtle,
-              borderRadius: radius.lg,
-              padding: spacing.md,
-              marginTop: spacing.md,
-              gap: spacing.sm,
-            },
-          ]}
-        >
-          <Ionicons name="alert-circle" size={18} color={colors.status.danger} />
-          <Text style={[typography.footnote, styles.errorText, { color: colors.status.danger }]}>
-            {submit.error}
-          </Text>
-        </View>
-      ) : null}
+      {/*
+        Form-level, so it belongs to no single input — the VIU gate's refusal, an
+        unreachable server. Same inline treatment as a field error so the screen
+        speaks in one voice, positioned below every field and above the button.
+      */}
+      {submit.error !== null ? <FieldError message={submit.error} /> : null}
 
       <Pressable
         onPress={handleSubmit}
@@ -381,15 +368,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   passwordInput: {
-    flex: 1,
-  },
-  errorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  errorText: {
-    // Takes the remaining width so a long sentence wraps beside the icon rather
-    // than pushing it off the row.
     flex: 1,
   },
   button: {
