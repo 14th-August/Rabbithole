@@ -112,6 +112,11 @@ export default function AuthLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
+            // Stops a screen re-rendering while it is blurred. Without it both
+            // screens stay live through the whole push, so every keystroke and
+            // state change on the one being animated away costs frames on the
+            // one arriving. react-native-screens does the freezing natively.
+            freezeOnBlur: true,
             // Opaque, and painted from a token. "transparent" looks like the
             // right answer and is not: the screen still falls through to React
             // Navigation's own theme, which is a colour no token owns. That

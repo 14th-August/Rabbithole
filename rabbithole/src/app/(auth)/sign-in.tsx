@@ -19,15 +19,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 // Not `icon.png`: that is the 1024px store icon. Rendering it at 96pt made
 // Metro ship 185 KB over the LAN on every dev reload and decode a 1024x1024
@@ -111,11 +103,11 @@ export default function SignIn() {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.screen}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
+    // Deliberately not a ScrollView. This screen is short enough to fit, and a
+    // scroller here costs a second scrollable view mounted during the push to
+    // /sign-up. The layout's KeyboardAvoidingView still lifts it clear of the
+    // keyboard.
+    <View style={styles.screen}>
       <Image
         source={logo}
         style={{ width: logoSize, height: logoSize, borderRadius: radius.pill }}
@@ -250,13 +242,13 @@ export default function SignIn() {
           Sign up
         </Link>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
-    flexGrow: 1,
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },

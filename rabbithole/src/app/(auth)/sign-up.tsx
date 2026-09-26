@@ -1,17 +1,21 @@
 /**
  * Sign-up screen — `/sign-up`.
  *
- * Owns: the sign-up form, the values typed into it, and what to show while the
- * request is in flight.
+ * Owns: the sign-up form, the values typed into it, whether the two passwords
+ * agree, and what to show while the request is in flight.
  * Does not own: creating the account. That is `signUp` in `src/lib/auth.ts`.
  * Nor enforcing the VIU rule — the gate is a server-side auth hook, so this
  * screen only relays whatever it says.
  *
- * Deliberately mirrors `sign-in.tsx` line for line so the pair reads as one
- * pattern rather than two.
+ * Deliberately mirrors `sign-in.tsx` element for element — same logo at the same
+ * size, same spacing rhythm, same pill fields and button — so moving between the
+ * two reads as one screen changing rather than two screens swapping. The one
+ * structural difference is that this scrolls: four fields and a keyboard do not
+ * fit on a small phone, where sign-in's two do.
  */
 
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { Image } from "expo-image";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -24,6 +28,7 @@ import {
   View,
 } from "react-native";
 
+import logo from "@/assets/images/logo-round.png";
 import { signUp } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/useAsync";
@@ -32,13 +37,15 @@ import { useTheme } from "@/theme";
 /**
  * The values this form collects.
  *
- * `name` and `email` map to columns a future `profiles` row will need;
- * `password` never reaches that table — auth stores it separately.
+ * `name` and `email` map to columns the `profiles` row needs; `password` never
+ * reaches that table — auth stores it separately. `confirmPassword` never leaves
+ * this screen at all.
  */
 interface SignUpForm {
   name: string;
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
 /** The sign-up screen. */
@@ -46,24 +53,55 @@ export default function SignUp() {
   const { colors, spacing, radius, layout, typography } = useTheme();
   const router = useRouter();
 
-  const [form, setForm] = useState<SignUpForm>({ name: "", email: "", password: "" });
+  const [form, setForm] = useState<SignUpForm>({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   // The client is bound once here. `signUp` takes it as an argument so it can
   // run outside the app, but a screen only ever has the one.
-  const submit = useAsync((input: SignUpForm) => signUp(supabase, input));
+  const submit = useAsync((input: { name: string; email: string; password: string }) =>
+    signUp(supabase, input),
+  );
 
   const isComplete =
-    form.name.trim() !== "" && form.email.trim() !== "" && form.password !== "";
+    form.name.trim() !== "" &&
+    form.email.trim() !== "" &&
+    form.password !== "" &&
+    form.confirmPassword !== "";
   const canSubmit = isComplete && !submit.isPending;
+
+  // One banner serves both sources. A mismatch caught here and a rejection from
+  // the server are the same thing to the person reading it — a reason the form
+  // did not go through — so they should not appear in two different places.
+  const errorMessage = localError ?? submit.error;
+  const hasError = errorMessage !== null;
 
   /** Update one field, and clear any error so a retry starts clean. */
   function updateField(patch: Partial<SignUpForm>) {
     setForm({ ...form, ...patch });
+    setLocalError(null);
     submit.clearError();
   }
 
   async function handleSubmit() {
-    const created = await submit.run(form);
+    // Checked on submit rather than on every keystroke: telling someone their
+    // passwords do not match while they are still typing the second one is
+    // noise, since it is true for most of the time they spend in that field.
+    if (form.password !== form.confirmPassword) {
+      setLocalError("Those passwords don't match.");
+      return;
+    }
+
+    const created = await submit.run({
+      name: form.name,
+      email: form.email,
+      password: form.password,
+    });
     if (!created) return;
 
     // Confirmation is on, so no session exists yet — `signUp` returned a user
@@ -73,80 +111,155 @@ export default function SignUp() {
     router.push({ pathname: "/verify", params: { email: created.email } });
   }
 
-  // All three inputs look the same, so the style lives in one place.
-  const inputStyle = {
+  // 96 — two steps of the grid's largest token. Same derivation as sign-in, so
+  // the logo does not shift by a pixel across the transition.
+  const logoSize = spacing.xxxl * 2;
+
+  // All four fields share the pill. Defined once so they cannot drift apart.
+  const fieldStyle = {
     minHeight: layout.tapTargetMin,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
     borderWidth: layout.borderWidth,
-    borderColor: colors.border,
+    borderColor: hasError ? colors.status.danger : colors.border,
     backgroundColor: colors.surfaceSunken,
-    color: colors.text.primary,
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-      <Text style={[typography.title1, { color: colors.text.primary }]}>Create account</Text>
+    <ScrollView
+      // paddingVertical inline because it is a token and StyleSheet.create has
+      // no hook. It only bites once the content is tall enough to scroll, and
+      // then it keeps the logo and footer off the safe-area edges.
+      contentContainerStyle={[styles.screen, { paddingVertical: spacing.xl }]}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <Image
+        source={logo}
+        style={{ width: logoSize, height: logoSize, borderRadius: radius.pill }}
+        contentFit="cover"
+        // Decorative: the heading directly below already names the action, so
+        // announcing the logo too would only repeat it to a screen reader.
+        accessible={false}
+      />
 
-      <Text style={[typography.subhead, { color: colors.text.secondary, marginTop: spacing.xs }]}>
+      <Text
+        style={[
+          typography.title1,
+          styles.centered,
+          { color: colors.text.primary, marginTop: spacing.xl },
+        ]}
+      >
+        Create account
+      </Text>
+
+      <Text
+        style={[
+          typography.subhead,
+          styles.centered,
+          { color: colors.text.secondary, marginTop: spacing.xs },
+        ]}
+      >
         Use your campus email so other students know you study here.
       </Text>
 
-      <Text style={[typography.caption, { color: colors.text.secondary, marginTop: spacing.xl }]}>
-        NAME
-      </Text>
       <TextInput
         value={form.name}
         onChangeText={(name) => updateField({ name })}
         editable={!submit.isPending}
-        placeholder="Alex Chen"
+        placeholder="Enter your name"
         placeholderTextColor={colors.text.placeholder}
+        autoComplete="name"
         accessibilityLabel="Your name"
-        style={[typography.body, inputStyle, { marginTop: spacing.xs }]}
+        style={[
+          typography.body,
+          fieldStyle,
+          styles.fullWidth,
+          { color: colors.text.primary, marginTop: spacing.xxl },
+        ]}
       />
 
-      <Text style={[typography.caption, { color: colors.text.secondary, marginTop: spacing.md }]}>
-        EMAIL
-      </Text>
       <TextInput
         value={form.email}
         onChangeText={(email) => updateField({ email })}
         editable={!submit.isPending}
-        placeholder="you@my.viu.ca"
+        placeholder="first.last@my.viu.ca"
         placeholderTextColor={colors.text.placeholder}
         keyboardType="email-address"
         autoCapitalize="none"
+        autoComplete="email"
         accessibilityLabel="Campus email address"
-        style={[typography.body, inputStyle, { marginTop: spacing.xs }]}
+        style={[
+          typography.body,
+          fieldStyle,
+          styles.fullWidth,
+          { color: colors.text.primary, marginTop: spacing.md },
+        ]}
       />
 
-      <Text style={[typography.caption, { color: colors.text.secondary, marginTop: spacing.md }]}>
-        PASSWORD
-      </Text>
+      <View style={[fieldStyle, styles.fullWidth, styles.passwordRow, { marginTop: spacing.md }]}>
+        <TextInput
+          value={form.password}
+          onChangeText={(password) => updateField({ password })}
+          editable={!submit.isPending}
+          placeholder="Password"
+          placeholderTextColor={colors.text.placeholder}
+          secureTextEntry={!isPasswordVisible}
+          autoCapitalize="none"
+          autoComplete="new-password"
+          accessibilityLabel="Password"
+          style={[typography.body, styles.passwordInput, { color: colors.text.primary }]}
+        />
+
+        {/*
+          One toggle drives both fields. Revealing only one of a pair leaves the
+          typo hidden in the other, which is the exact thing the second field
+          exists to catch.
+        */}
+        <Pressable
+          onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+          accessibilityRole="button"
+          accessibilityLabel={isPasswordVisible ? "Hide passwords" : "Show passwords"}
+          hitSlop={layout.hitSlop}
+        >
+          <Ionicons
+            name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
+            size={20}
+            color={colors.text.secondary}
+          />
+        </Pressable>
+      </View>
+
       <TextInput
-        value={form.password}
-        onChangeText={(password) => updateField({ password })}
+        value={form.confirmPassword}
+        onChangeText={(confirmPassword) => updateField({ confirmPassword })}
         editable={!submit.isPending}
-        placeholder="At least 6 characters"
+        placeholder="Confirm password"
         placeholderTextColor={colors.text.placeholder}
-        secureTextEntry
+        secureTextEntry={!isPasswordVisible}
         autoCapitalize="none"
-        accessibilityLabel="Password"
-        style={[typography.body, inputStyle, { marginTop: spacing.xs }]}
+        autoComplete="new-password"
+        accessibilityLabel="Confirm password"
+        style={[
+          typography.body,
+          fieldStyle,
+          styles.fullWidth,
+          { color: colors.text.primary, marginTop: spacing.md },
+        ]}
       />
 
-      {submit.error ? (
+      {hasError ? (
         <View
           // Without these a failed signup is silent to a screen reader: the
           // button stops spinning and nothing says why.
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
           style={[
-            styles.error,
+            styles.fullWidth,
             styles.errorRow,
             {
               backgroundColor: colors.status.dangerSubtle,
-              borderRadius: radius.md,
+              borderRadius: radius.lg,
               padding: spacing.md,
               marginTop: spacing.md,
               gap: spacing.sm,
@@ -155,7 +268,7 @@ export default function SignUp() {
         >
           <Ionicons name="alert-circle" size={18} color={colors.status.danger} />
           <Text style={[typography.footnote, styles.errorText, { color: colors.status.danger }]}>
-            {submit.error}
+            {errorMessage}
           </Text>
         </View>
       ) : null}
@@ -170,9 +283,10 @@ export default function SignUp() {
         accessibilityState={{ disabled: !canSubmit, busy: submit.isPending }}
         style={[
           styles.button,
+          styles.fullWidth,
           {
             minHeight: layout.tapTargetMin,
-            borderRadius: radius.md,
+            borderRadius: radius.pill,
             backgroundColor: colors.brand.default,
             marginTop: spacing.xl,
             opacity: canSubmit ? 1 : 0.5,
@@ -194,10 +308,7 @@ export default function SignUp() {
         idea whether it succeeded, and the verify screen unreachable.
       */}
       <View
-        style={[
-          styles.footer,
-          { marginTop: spacing.lg, opacity: submit.isPending ? 0.4 : 1 },
-        ]}
+        style={[styles.footer, { marginTop: spacing.xl, opacity: submit.isPending ? 0.4 : 1 }]}
         pointerEvents={submit.isPending ? "none" : "auto"}
       >
         <Text style={[typography.footnote, { color: colors.text.secondary }]}>
@@ -214,18 +325,29 @@ export default function SignUp() {
 const styles = StyleSheet.create({
   screen: {
     flexGrow: 1,
+    alignItems: "center",
     justifyContent: "center",
   },
-  error: {
+  centered: {
+    textAlign: "center",
+  },
+  fullWidth: {
     width: "100%",
+  },
+  passwordRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  passwordInput: {
+    flex: 1,
   },
   errorRow: {
     flexDirection: "row",
     alignItems: "center",
   },
   errorText: {
-    // Takes the remaining width so a long sentence wraps beside the icon
-    // rather than pushing it off the row.
+    // Takes the remaining width so a long sentence wraps beside the icon rather
+    // than pushing it off the row.
     flex: 1,
   },
   button: {
