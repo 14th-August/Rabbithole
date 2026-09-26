@@ -30,8 +30,14 @@ import mark from "@/assets/images/splash-icon.png";
 import { consumeWelcome } from "@/lib/welcome";
 import { useTheme } from "@/theme";
 
-/** How long the greeting holds before it starts leaving, in ms. */
-const HOLD_MS = 1300;
+/**
+ * How long the greeting holds at full opacity, in ms.
+ *
+ * Long enough to read a name you have just typed and a line you have not seen
+ * before. Under about two seconds it registers as a flash rather than a
+ * greeting, which is the thing this screen exists to avoid.
+ */
+const HOLD_MS = 2000;
 
 /** How long the fade itself takes, in ms. */
 const FADE_MS = 450;

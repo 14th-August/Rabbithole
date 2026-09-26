@@ -29,9 +29,11 @@ import {
 } from "react-native";
 
 import logo from "@/assets/images/logo-round.png";
+import { FieldError } from "@/components/FieldError";
 import { signUp } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/useAsync";
+import { isCampusEmail, isValidEmail } from "@/lib/validation";
 import { useTheme } from "@/theme";
 
 /**
@@ -60,7 +62,13 @@ export default function SignUp() {
     confirmPassword: "",
   });
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
+  // Which field is wrong, not just that something is. Reddening all four inputs
+  // because one is malformed makes the user hunt for a problem the UI already
+  // knows the location of.
+  const [fieldError, setFieldError] = useState<{
+    field: "email" | "confirmPassword";
+    message: string;
+  } | null>(null);
 
   // The client is bound once here. `signUp` takes it as an argument so it can
   // run outside the app, but a screen only ever has the one.
@@ -75,25 +83,43 @@ export default function SignUp() {
     form.confirmPassword !== "";
   const canSubmit = isComplete && !submit.isPending;
 
-  // One banner serves both sources. A mismatch caught here and a rejection from
-  // the server are the same thing to the person reading it — a reason the form
-  // did not go through — so they should not appear in two different places.
-  const errorMessage = localError ?? submit.error;
-  const hasError = errorMessage !== null;
+  // Two different questions, answered in two places. `submit.error` is
+  // form-level — the VIU gate's refusal, an unreachable server — and goes in the
+  // banner above the button. `fieldError` is "fix this input", and renders
+  // against the input it belongs to.
 
   /** Update one field, and clear any error so a retry starts clean. */
   function updateField(patch: Partial<SignUpForm>) {
     setForm({ ...form, ...patch });
-    setLocalError(null);
+    setFieldError(null);
     submit.clearError();
   }
 
   async function handleSubmit() {
+    // Ordered widest-to-narrowest so the message names the first thing actually
+    // wrong. Checking the campus domain first would tell someone who typed their
+    // name to use a @my.viu.ca address, which is true but not the problem.
+    if (!isValidEmail(form.email)) {
+      setFieldError({ field: "email", message: "Enter a valid email address." });
+      return;
+    }
+
+    // Layer 1 from docs/backend/auth-flow.md — a keyboard convenience, not the
+    // gate. The auth hook rejects this server side regardless, but finding out
+    // here saves a round trip and a more confusing error.
+    if (!isCampusEmail(form.email)) {
+      setFieldError({
+        field: "email",
+        message: "Use your campus email — it should end in @my.viu.ca.",
+      });
+      return;
+    }
+
     // Checked on submit rather than on every keystroke: telling someone their
     // passwords do not match while they are still typing the second one is
     // noise, since it is true for most of the time they spend in that field.
     if (form.password !== form.confirmPassword) {
-      setLocalError("Those passwords don't match.");
+      setFieldError({ field: "confirmPassword", message: "Those passwords don't match." });
       return;
     }
 
@@ -121,7 +147,7 @@ export default function SignUp() {
     paddingHorizontal: spacing.lg,
     borderRadius: radius.pill,
     borderWidth: layout.borderWidth,
-    borderColor: hasError ? colors.status.danger : colors.border,
+    borderColor: colors.border,
     backgroundColor: colors.surfaceSunken,
   };
 
@@ -193,9 +219,16 @@ export default function SignUp() {
           typography.body,
           fieldStyle,
           styles.fullWidth,
-          { color: colors.text.primary, marginTop: spacing.md },
+          {
+            color: colors.text.primary,
+            marginTop: spacing.md,
+            borderColor:
+              fieldError?.field === "email" ? colors.status.danger : colors.border,
+          },
         ]}
       />
+
+      {fieldError?.field === "email" ? <FieldError message={fieldError.message} /> : null}
 
       <View style={[fieldStyle, styles.fullWidth, styles.passwordRow, { marginTop: spacing.md }]}>
         <TextInput
@@ -244,11 +277,20 @@ export default function SignUp() {
           typography.body,
           fieldStyle,
           styles.fullWidth,
-          { color: colors.text.primary, marginTop: spacing.md },
+          {
+            color: colors.text.primary,
+            marginTop: spacing.md,
+            borderColor:
+              fieldError?.field === "confirmPassword" ? colors.status.danger : colors.border,
+          },
         ]}
       />
 
-      {hasError ? (
+      {fieldError?.field === "confirmPassword" ? (
+        <FieldError message={fieldError.message} />
+      ) : null}
+
+      {submit.error !== null ? (
         <View
           // Without these a failed signup is silent to a screen reader: the
           // button stops spinning and nothing says why.
@@ -268,7 +310,7 @@ export default function SignUp() {
         >
           <Ionicons name="alert-circle" size={18} color={colors.status.danger} />
           <Text style={[typography.footnote, styles.errorText, { color: colors.status.danger }]}>
-            {errorMessage}
+            {submit.error}
           </Text>
         </View>
       ) : null}

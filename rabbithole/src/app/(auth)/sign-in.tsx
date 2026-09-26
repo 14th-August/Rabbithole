@@ -26,9 +26,11 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 // bitmap to fill a 96pt circle. Same artwork, sized for the job: 288px is 96pt
 // at @3x, the densest screen this renders on.
 import logo from "@/assets/images/logo-round.png";
+import { FieldError } from "@/components/FieldError";
 import { signIn } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/useAsync";
+import { isValidEmail } from "@/lib/validation";
 import { useTheme } from "@/theme";
 
 /**
@@ -49,6 +51,10 @@ export default function SignIn() {
 
   const [form, setForm] = useState<SignInForm>({ email: "", password: "" });
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  // Which field is wrong, not just that something is. Reddening every input
+  // because one is malformed makes the user hunt for the problem the UI already
+  // knows the location of.
+  const [fieldError, setFieldError] = useState<{ field: "email"; message: string } | null>(null);
 
   // The client is bound once here. `signIn` takes it as an argument so it can
   // run outside the app, but a screen only ever has the one.
@@ -56,15 +62,33 @@ export default function SignIn() {
 
   const isComplete = form.email.trim() !== "" && form.password !== "";
   const canSubmit = isComplete && !submit.isPending;
-  const hasError = submit.error !== null;
+
+  // Two different questions, answered in two different places. `submit.error`
+  // is form-level — a wrong password, an unreachable server — and goes in the
+  // banner. `fieldError` is "fix this input", and renders against that input.
+  //
+  // Note the server error deliberately marks NO field. GoTrue returns
+  // `invalid_credentials` for a wrong password and an unknown address alike, on
+  // purpose, so that sign-in cannot be used to discover which addresses have
+  // accounts. Reddening both inputs would claim to know something the API
+  // refused to say; reddening one would be a guess.
 
   /** Update one field, and clear any error so a retry starts clean. */
   function updateField(patch: Partial<SignInForm>) {
     setForm({ ...form, ...patch });
+    setFieldError(null);
     submit.clearError();
   }
 
   async function handleSubmit() {
+    // Checked on submit rather than per keystroke: an address is malformed for
+    // almost the whole time someone is typing it, so live validation would spend
+    // most of its life being wrong out loud.
+    if (!isValidEmail(form.email)) {
+      setFieldError({ field: "email", message: "Enter a valid email address." });
+      return;
+    }
+
     const outcome = await submit.run(form);
     if (!outcome) return;
 
@@ -98,7 +122,7 @@ export default function SignIn() {
     paddingHorizontal: spacing.lg,
     borderRadius: radius.pill,
     borderWidth: layout.borderWidth,
-    borderColor: hasError ? colors.status.danger : colors.border,
+    borderColor: colors.border,
     backgroundColor: colors.surfaceSunken,
   };
 
@@ -151,9 +175,16 @@ export default function SignIn() {
           typography.body,
           fieldStyle,
           styles.fullWidth,
-          { color: colors.text.primary, marginTop: spacing.xxl },
+          {
+            color: colors.text.primary,
+            marginTop: spacing.xxl,
+            // Only this field, and only when this field is the problem.
+            borderColor: fieldError !== null ? colors.status.danger : colors.border,
+          },
         ]}
       />
+
+      {fieldError !== null ? <FieldError message={fieldError.message} /> : null}
 
       <View style={[fieldStyle, styles.fullWidth, styles.passwordRow, { marginTop: spacing.md }]}>
         <TextInput
@@ -183,7 +214,7 @@ export default function SignIn() {
         </Pressable>
       </View>
 
-      {hasError ? (
+      {submit.error !== null ? (
         <View
           // `alert` covers VoiceOver, `accessibilityLiveRegion` covers TalkBack.
           // Without them a failed sign-in is silent to a screen reader: the
