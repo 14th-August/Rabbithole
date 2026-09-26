@@ -215,6 +215,52 @@ are cached by then and it succeeds.
 Also note: `supabase start` exits with **code 0 even when it fails**. Read the last
 line of its output, not the exit status.
 
+## Run every command from `rabbithole/` — 2026-09-25
+
+> ```
+> failed to start docker container "supabase_db_Rabbithole":
+> Bind for 0.0.0.0:54322 failed: port is already allocated
+> ```
+
+The CLI derives its Docker project id from the **containing folder name**. This
+repository has two directories one letter apart:
+
+| Run from | Project id | Owns `supabase/`? |
+| --- | --- | --- |
+| `Rabbithole/` (repo root) | `Rabbithole` | No |
+| `rabbithole/` (the app) | `rabbithole` | **Yes** |
+
+Running from the root therefore starts a *second, unrelated* stack with no
+migrations and no seed, which then collides with the real one on 54322. Worse, the
+failed start's rollback tore down the healthy lowercase containers and deleted its
+database volume — so the visible symptom was the API dying, not a naming mistake.
+
+**Recovery:** `npx supabase stop` from whichever directory owns the stray project,
+then `npx supabase start` from `rabbithole/`. Check which is which with
+`docker ps --format "{{.Names}}"` and read the case of the suffix.
+
+## A seeded account cannot sign in — 2026-09-25
+
+> ```
+> HTTP 500  {"code":500,"error_code":"unexpected_failure",
+>            "msg":"Database error querying schema"}
+> ```
+
+**The tell:** a seeded account 500s while an account created through the app's own
+signup returns a normal `400 invalid_credentials`. That asymmetry means the row is
+malformed, not the password.
+
+GoTrue scans `confirmation_token`, `recovery_token`, `email_change`,
+`email_change_token_new`, `email_change_token_current`, `phone_change`,
+`phone_change_token` and `reauthentication_token` into plain Go strings. All are
+`varchar NULL` with no default, so any hand-written `insert into auth.users` that
+omits them stores NULL — and NULL fails that scan. Real signups are unaffected
+because GoTrue writes empty strings itself.
+
+Fixed in `supabase/seed.sql` with a `coalesce` pass after the insert. It fails at
+**sign-in**, not at insert, and the app surfaces it as "Something went wrong" —
+which is indistinguishable from a network fault, and is what made it expensive.
+
 ## Quick reference
 
 ```bash
@@ -233,6 +279,33 @@ npx supabase gen types typescript --local > src/types/database.ts
 
 npx supabase status                        # local URLs and keys
 npx supabase stop                          # free the containers
+npx supabase stop --no-backup              # ...and discard the database volume
 ```
 
-Local Studio runs at `http://localhost:54323` once `start` succeeds.
+**Every one of these must run from `rabbithole/`.** See the section above for what
+happens otherwise.
+
+| Service | URL |
+| --- | --- |
+| API gateway — what the app talks to | `http://localhost:54321` |
+| Postgres | `postgresql://postgres:postgres@localhost:54322/postgres` |
+| Studio | `http://localhost:54323` |
+| Mailpit — reads confirmation codes locally | `http://localhost:54324` |
+
+Signup sends a 6-digit code rather than a link, so confirming an account locally
+means opening Mailpit and reading the code out of the email. Nothing is sent.
+
+**Editing the email template requires restarting Auth.** GoTrue reads
+`supabase/templates/confirmation.html` once at container start and caches it, so a
+saved edit keeps sending the previous version and nothing reports an error —
+verified 2026-09-26. `docker restart supabase_auth_rabbithole` picks it up; the
+container is stateless, so no sessions or data are lost.
+
+To check the auth stack end to end without touching the app:
+
+```bash
+curl -s -X POST "http://127.0.0.1:54321/auth/v1/token?grant_type=password"   -H "apikey: $EXPO_PUBLIC_SUPABASE_KEY" -H "Content-Type: application/json"   -d '{"email":"maya.chen@my.viu.ca","password":"rabbithole"}'
+```
+
+A 200 with an `access_token` means the backend is fine and any remaining failure is
+the device or the network — which is the fastest way to split those two apart.
