@@ -10,10 +10,14 @@
  * account but **no session** — email confirmation is on, so `signUp` returns a
  * user and no tokens. That is why verification lives on the unauthenticated side
  * of the app alongside sign-in, rather than somewhere behind a session check.
+ *
+ * Matches `sign-in.tsx` and `sign-up.tsx`: same logo at the same derived size,
+ * same spacing rhythm, same pill geometry.
  */
 
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Link, useLocalSearchParams, useRouter } from "expo-router";
+import { Image } from "expo-image";
+import { Link, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,6 +29,7 @@ import {
   View,
 } from "react-native";
 
+import logo from "@/assets/images/logo-round.png";
 import { RESEND_COOLDOWN_SECONDS, confirmSignUp, resendSignUpCode } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/useAsync";
@@ -36,7 +41,6 @@ const CODE_LENGTH = 6;
 /** The verify screen. */
 export default function Verify() {
   const { colors, spacing, radius, layout, typography } = useTheme();
-  const router = useRouter();
 
   // Query params are never guaranteed at runtime — typed routes check that a
   // route exists, not that it was given the params it wants. Someone opening
@@ -73,12 +77,16 @@ export default function Verify() {
   const isComplete = code.length === CODE_LENGTH;
   const canSubmit = isComplete && !submit.isPending;
 
-  const inputStyle = {
+  // 96 — two steps of the grid's largest token. Same derivation as the other two
+  // auth screens, so the logo does not shift across the transition.
+  const logoSize = spacing.xxxl * 2;
+
+  const fieldStyle = {
     minHeight: layout.tapTargetMin,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
     borderWidth: layout.borderWidth,
-    borderColor: colors.border,
+    borderColor: submit.error !== null ? colors.status.danger : colors.border,
     backgroundColor: colors.surfaceSunken,
     color: colors.text.primary,
   };
@@ -98,16 +106,11 @@ export default function Verify() {
   async function handleSubmit() {
     if (!email) return;
 
-    const session = await submit.run({ email, token: code });
-    if (!session) return;
-
-    // TEMPORARY — delete this when the auth wall lands (step 5).
-    //
-    // Once `_layout.tsx` guards `(tabs)` on the session, confirming a code makes
-    // SessionProvider flip the guard and the router swaps groups on its own.
-    // Navigating here as well would race that swap and can throw, because
-    // `(tabs)` is not in the tree at the instant this runs.
-    router.replace("/");
+    // No navigation on success, deliberately. Confirming a code returns a
+    // session, which fires `onAuthStateChange`, which flips the root layout's
+    // guard and swaps route groups. Routing by hand here would race that swap
+    // and can throw, because `(tabs)` is not in the tree at the instant it runs.
+    await submit.run({ email, token: code });
   }
 
   async function handleResend() {
@@ -122,19 +125,42 @@ export default function Verify() {
   // React violation the compiler bails on silently.
   if (!email) {
     return (
-      <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-        <Text style={[typography.title1, { color: colors.text.primary }]}>
+      <ScrollView
+        contentContainerStyle={[styles.screen, { paddingVertical: spacing.xl }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Image
+          source={logo}
+          style={{ width: logoSize, height: logoSize, borderRadius: radius.pill }}
+          contentFit="cover"
+          accessible={false}
+        />
+
+        <Text
+          style={[
+            typography.title1,
+            styles.centered,
+            { color: colors.text.primary, marginTop: spacing.xl },
+          ]}
+        >
           Something&rsquo;s missing
         </Text>
+
         <Text
-          style={[typography.subhead, { color: colors.text.secondary, marginTop: spacing.xs }]}
+          style={[
+            typography.subhead,
+            styles.centered,
+            { color: colors.text.secondary, marginTop: spacing.xs },
+          ]}
         >
           This link didn&rsquo;t carry an email address, so there&rsquo;s no account to confirm.
           Start again and we&rsquo;ll send you a fresh code.
         </Text>
+
         <Link
           href="/sign-up"
-          style={[typography.footnote, { color: colors.brand.default, marginTop: spacing.lg }]}
+          style={[typography.footnote, { color: colors.brand.default, marginTop: spacing.xl }]}
         >
           Create an account
         </Link>
@@ -143,16 +169,39 @@ export default function Verify() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-      <Text style={[typography.title1, { color: colors.text.primary }]}>Check your email</Text>
+    <ScrollView
+      contentContainerStyle={[styles.screen, { paddingVertical: spacing.xl }]}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <Image
+        source={logo}
+        style={{ width: logoSize, height: logoSize, borderRadius: radius.pill }}
+        contentFit="cover"
+        // Decorative: the heading below already says what this screen is for.
+        accessible={false}
+      />
 
-      <Text style={[typography.subhead, { color: colors.text.secondary, marginTop: spacing.xs }]}>
+      <Text
+        style={[
+          typography.title1,
+          styles.centered,
+          { color: colors.text.primary, marginTop: spacing.xl },
+        ]}
+      >
+        Check your email
+      </Text>
+
+      <Text
+        style={[
+          typography.subhead,
+          styles.centered,
+          { color: colors.text.secondary, marginTop: spacing.xs },
+        ]}
+      >
         We sent a {CODE_LENGTH}-digit code to {email}.
       </Text>
 
-      <Text style={[typography.caption, { color: colors.text.secondary, marginTop: spacing.xl }]}>
-        CODE
-      </Text>
       <TextInput
         value={code}
         onChangeText={handleChangeCode}
@@ -168,23 +217,24 @@ export default function Verify() {
         editable={!submit.isPending}
         style={[
           typography.title2,
-          inputStyle,
+          fieldStyle,
+          styles.fullWidth,
           styles.code,
-          { marginTop: spacing.xs, letterSpacing: spacing.sm },
+          { marginTop: spacing.xxl, letterSpacing: spacing.sm },
         ]}
       />
 
-      {submit.error ? (
+      {submit.error !== null ? (
         <View
           // Without these a rejected code is silent to a screen reader.
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
           style={[
-            styles.error,
+            styles.fullWidth,
             styles.errorRow,
             {
               backgroundColor: colors.status.dangerSubtle,
-              borderRadius: radius.md,
+              borderRadius: radius.lg,
               padding: spacing.md,
               marginTop: spacing.md,
               gap: spacing.sm,
@@ -209,9 +259,10 @@ export default function Verify() {
         accessibilityState={{ disabled: !canSubmit, busy: submit.isPending }}
         style={[
           styles.button,
+          styles.fullWidth,
           {
             minHeight: layout.tapTargetMin,
-            borderRadius: radius.md,
+            borderRadius: radius.pill,
             backgroundColor: colors.brand.default,
             marginTop: spacing.xl,
             opacity: canSubmit ? 1 : 0.5,
@@ -235,12 +286,12 @@ export default function Verify() {
           busy: resend.isPending,
         }}
         hitSlop={layout.hitSlop}
-        style={[styles.resend, { minHeight: layout.tapTargetMin, marginTop: spacing.md }]}
+        style={[styles.button, { minHeight: layout.tapTargetMin, marginTop: spacing.md }]}
       >
         {resend.isPending ? (
-          // Its own indicator rather than the button's. Requesting a new email
-          // is a separate wait from confirming a code, and showing one spinner
-          // for both would misreport which call is actually running.
+          // Its own indicator rather than the button's. Requesting a new email is
+          // a separate wait from confirming a code, and one spinner for both
+          // would misreport which call is actually running.
           <ActivityIndicator color={colors.brand.default} />
         ) : (
           <Text
@@ -254,13 +305,14 @@ export default function Verify() {
         )}
       </Pressable>
 
-      {resend.error ? (
+      {resend.error !== null ? (
         <Text
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
           style={[
             typography.footnote,
-            { color: colors.status.danger, textAlign: "center", marginTop: spacing.xs },
+            styles.centered,
+            { color: colors.status.danger, marginTop: spacing.xs },
           ]}
         >
           {resend.error}
@@ -275,10 +327,7 @@ export default function Verify() {
         never arrive, and this link is their way out.
       */}
       <View
-        style={[
-          styles.footer,
-          { marginTop: spacing.lg, opacity: submit.isPending ? 0.4 : 1 },
-        ]}
+        style={[styles.footer, { marginTop: spacing.xl, opacity: submit.isPending ? 0.4 : 1 }]}
         pointerEvents={submit.isPending ? "none" : "auto"}
       >
         <Text style={[typography.footnote, { color: colors.text.secondary }]}>
@@ -295,26 +344,28 @@ export default function Verify() {
 const styles = StyleSheet.create({
   screen: {
     flexGrow: 1,
+    alignItems: "center",
     justifyContent: "center",
+  },
+  centered: {
+    textAlign: "center",
+  },
+  fullWidth: {
+    width: "100%",
   },
   code: {
     textAlign: "center",
-  },
-  error: {
-    width: "100%",
   },
   errorRow: {
     flexDirection: "row",
     alignItems: "center",
   },
   errorText: {
+    // Takes the remaining width so a long sentence wraps beside the icon rather
+    // than pushing it off the row.
     flex: 1,
   },
   button: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  resend: {
     alignItems: "center",
     justifyContent: "center",
   },
