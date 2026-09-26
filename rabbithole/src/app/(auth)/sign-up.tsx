@@ -11,6 +11,7 @@
  * pattern rather than two.
  */
 
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -53,6 +54,7 @@ export default function SignUp() {
 
   const isComplete =
     form.name.trim() !== "" && form.email.trim() !== "" && form.password !== "";
+  const canSubmit = isComplete && !submit.isPending;
 
   /** Update one field, and clear any error so a retry starts clean. */
   function updateField(patch: Partial<SignUpForm>) {
@@ -135,17 +137,24 @@ export default function SignUp() {
 
       {submit.error ? (
         <View
+          // Without these a failed signup is silent to a screen reader: the
+          // button stops spinning and nothing says why.
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
           style={[
             styles.error,
+            styles.errorRow,
             {
               backgroundColor: colors.status.dangerSubtle,
               borderRadius: radius.md,
               padding: spacing.md,
               marginTop: spacing.md,
+              gap: spacing.sm,
             },
           ]}
         >
-          <Text style={[typography.footnote, { color: colors.status.danger }]}>
+          <Ionicons name="alert-circle" size={18} color={colors.status.danger} />
+          <Text style={[typography.footnote, styles.errorText, { color: colors.status.danger }]}>
             {submit.error}
           </Text>
         </View>
@@ -153,9 +162,12 @@ export default function SignUp() {
 
       <Pressable
         onPress={handleSubmit}
-        disabled={!isComplete || submit.isPending}
+        disabled={!canSubmit}
         accessibilityRole="button"
         accessibilityLabel="Create account"
+        // `busy` is what makes the wait audible; `disabled` alone reads as
+        // "unavailable", which is a different and misleading thing to announce.
+        accessibilityState={{ disabled: !canSubmit, busy: submit.isPending }}
         style={[
           styles.button,
           {
@@ -163,7 +175,7 @@ export default function SignUp() {
             borderRadius: radius.md,
             backgroundColor: colors.brand.default,
             marginTop: spacing.xl,
-            opacity: isComplete && !submit.isPending ? 1 : 0.5,
+            opacity: canSubmit ? 1 : 0.5,
           },
         ]}
       >
@@ -176,7 +188,18 @@ export default function SignUp() {
         )}
       </Pressable>
 
-      <View style={[styles.footer, { marginTop: spacing.lg }]}>
+      {/*
+        Dimmed and inert while the request is in flight. An account is being
+        created on the server; navigating away mid-call leaves the user with no
+        idea whether it succeeded, and the verify screen unreachable.
+      */}
+      <View
+        style={[
+          styles.footer,
+          { marginTop: spacing.lg, opacity: submit.isPending ? 0.4 : 1 },
+        ]}
+        pointerEvents={submit.isPending ? "none" : "auto"}
+      >
         <Text style={[typography.footnote, { color: colors.text.secondary }]}>
           Already have an account?{" "}
         </Text>
@@ -195,6 +218,15 @@ const styles = StyleSheet.create({
   },
   error: {
     width: "100%",
+  },
+  errorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  errorText: {
+    // Takes the remaining width so a long sentence wraps beside the icon
+    // rather than pushing it off the row.
+    flex: 1,
   },
   button: {
     alignItems: "center",

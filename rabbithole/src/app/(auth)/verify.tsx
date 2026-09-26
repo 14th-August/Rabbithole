@@ -12,6 +12,7 @@
  * of the app alongside sign-in, rather than somewhere behind a session check.
  */
 
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -70,6 +71,7 @@ export default function Verify() {
   }, [secondsLeft]);
 
   const isComplete = code.length === CODE_LENGTH;
+  const canSubmit = isComplete && !submit.isPending;
 
   const inputStyle = {
     minHeight: layout.tapTargetMin,
@@ -122,13 +124,13 @@ export default function Verify() {
     return (
       <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
         <Text style={[typography.title1, { color: colors.text.primary }]}>
-          Something's missing
+          Something&rsquo;s missing
         </Text>
         <Text
           style={[typography.subhead, { color: colors.text.secondary, marginTop: spacing.xs }]}
         >
-          This link didn't carry an email address, so there's no account to confirm. Start
-          again and we'll send you a fresh code.
+          This link didn&rsquo;t carry an email address, so there&rsquo;s no account to confirm.
+          Start again and we&rsquo;ll send you a fresh code.
         </Text>
         <Link
           href="/sign-up"
@@ -174,17 +176,23 @@ export default function Verify() {
 
       {submit.error ? (
         <View
+          // Without these a rejected code is silent to a screen reader.
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
           style={[
             styles.error,
+            styles.errorRow,
             {
               backgroundColor: colors.status.dangerSubtle,
               borderRadius: radius.md,
               padding: spacing.md,
               marginTop: spacing.md,
+              gap: spacing.sm,
             },
           ]}
         >
-          <Text style={[typography.footnote, { color: colors.status.danger }]}>
+          <Ionicons name="alert-circle" size={18} color={colors.status.danger} />
+          <Text style={[typography.footnote, styles.errorText, { color: colors.status.danger }]}>
             {submit.error}
           </Text>
         </View>
@@ -192,9 +200,13 @@ export default function Verify() {
 
       <Pressable
         onPress={handleSubmit}
-        disabled={!isComplete || submit.isPending}
+        disabled={!canSubmit}
         accessibilityRole="button"
         accessibilityLabel="Confirm code"
+        // Deliberately reads `submit`, never `resend`. The two run independently,
+        // and conflating them would make the Confirm button claim to be working
+        // while the user is only waiting on a new email.
+        accessibilityState={{ disabled: !canSubmit, busy: submit.isPending }}
         style={[
           styles.button,
           {
@@ -202,7 +214,7 @@ export default function Verify() {
             borderRadius: radius.md,
             backgroundColor: colors.brand.default,
             marginTop: spacing.xl,
-            opacity: isComplete && !submit.isPending ? 1 : 0.5,
+            opacity: canSubmit ? 1 : 0.5,
           },
         ]}
       >
@@ -215,24 +227,37 @@ export default function Verify() {
 
       <Pressable
         onPress={handleResend}
-        disabled={secondsLeft > 0 || resend.isPending}
+        disabled={secondsLeft > 0 || resend.isPending || submit.isPending}
         accessibilityRole="button"
         accessibilityLabel="Send a new code"
+        accessibilityState={{
+          disabled: secondsLeft > 0 || resend.isPending || submit.isPending,
+          busy: resend.isPending,
+        }}
         hitSlop={layout.hitSlop}
         style={[styles.resend, { minHeight: layout.tapTargetMin, marginTop: spacing.md }]}
       >
-        <Text
-          style={[
-            typography.footnote,
-            { color: secondsLeft > 0 ? colors.text.tertiary : colors.brand.default },
-          ]}
-        >
-          {secondsLeft > 0 ? `Send a new code in ${secondsLeft}s` : "Send a new code"}
-        </Text>
+        {resend.isPending ? (
+          // Its own indicator rather than the button's. Requesting a new email
+          // is a separate wait from confirming a code, and showing one spinner
+          // for both would misreport which call is actually running.
+          <ActivityIndicator color={colors.brand.default} />
+        ) : (
+          <Text
+            style={[
+              typography.footnote,
+              { color: secondsLeft > 0 ? colors.text.tertiary : colors.brand.default },
+            ]}
+          >
+            {secondsLeft > 0 ? `Send a new code in ${secondsLeft}s` : "Send a new code"}
+          </Text>
+        )}
       </Pressable>
 
       {resend.error ? (
         <Text
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
           style={[
             typography.footnote,
             { color: colors.status.danger, textAlign: "center", marginTop: spacing.xs },
@@ -249,7 +274,13 @@ export default function Verify() {
         A returning user who tapped Create account is waiting for a code that will
         never arrive, and this link is their way out.
       */}
-      <View style={[styles.footer, { marginTop: spacing.lg }]}>
+      <View
+        style={[
+          styles.footer,
+          { marginTop: spacing.lg, opacity: submit.isPending ? 0.4 : 1 },
+        ]}
+        pointerEvents={submit.isPending ? "none" : "auto"}
+      >
         <Text style={[typography.footnote, { color: colors.text.secondary }]}>
           Already have an account?{" "}
         </Text>
@@ -271,6 +302,13 @@ const styles = StyleSheet.create({
   },
   error: {
     width: "100%",
+  },
+  errorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  errorText: {
+    flex: 1,
   },
   button: {
     alignItems: "center",
