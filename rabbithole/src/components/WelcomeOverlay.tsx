@@ -50,7 +50,7 @@ interface WelcomeOverlayProps {
    * What to call them.
    *
    * Pass the full display name; this trims it to the first word itself, because
-   * "Welcome to the marketplace, Casey Adams!" reads like a form letter.
+   * "Welcome to the marketplace Casey Adams!" reads like a form letter.
    */
   name: string;
 }
@@ -121,7 +121,7 @@ export function WelcomeOverlay({ userId, name }: WelcomeOverlayProps) {
           },
         ]}
       >
-        Welcome to the marketplace, {firstName}!
+        Welcome to the marketplace {firstName}!
       </Text>
     </Animated.View>
   );
