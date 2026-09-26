@@ -18,6 +18,7 @@ import type { Db } from "@/lib/supabase";
 import type { AsyncResult } from "@/lib/useAsync";
 
 import { fail, ok } from "./queries/errors";
+import { clearSignInStamp, markSignedIn } from "./sessionAge";
 
 /**
  * How long the resend button stays disabled, in seconds.
@@ -80,6 +81,20 @@ const MESSAGES: Record<string, string> = {
  */
 function toAuthMessage(error: AuthError): string {
   if (error.status === 403 && error.message) return error.message;
+
+  // A request that never reached the server carries no GoTrue code to look up,
+  // so without this it falls through to "Something went wrong" — which sends
+  // people hunting for a typo in their password when the real problem is that
+  // the device cannot see the API at all. That is not a hypothetical: it is the
+  // first thing that happens when the local Supabase is not running, or when the
+  // LAN address in .env has gone stale.
+  //
+  // Matched on the class name rather than `isAuthRetryableFetchError`, which
+  // lives in `@supabase/auth-js` — a transitive package, not a declared
+  // dependency, so importing it would break the rule about undeclared deps.
+  if (error.name === "AuthRetryableFetchError" || error.status === 0) {
+    return "Can't reach the server. Check your connection, then try again.";
+  }
 
   const known = error.code ? MESSAGES[error.code] : undefined;
   if (known !== undefined) return known;
@@ -158,6 +173,10 @@ export async function signIn(
     return fail("Signed in, but no session came back. Please try again.");
   }
 
+  // A password was just typed, so the five-day clock restarts here. See
+  // `sessionAge.ts` for why that is tracked separately from the token.
+  markSignedIn();
+
   return ok({ kind: "signed-in", session: data.session });
 }
 
@@ -186,6 +205,10 @@ export async function confirmSignUp(
   if (data.session === null) {
     return fail("That code was accepted but no session came back. Please try again.");
   }
+
+  // Entering a correct code proves ownership exactly as a password does, and it
+  // returns a session, so it starts the five-day clock too.
+  markSignedIn();
 
   return ok(data.session);
 }
@@ -231,5 +254,10 @@ export async function signOut(db: Db): Promise<AsyncResult<null>> {
   const { error } = await db.auth.signOut();
 
   if (error) return fail(toAuthMessage(error));
+
+  // Drop the stamp alongside the session, so the next sign-in starts a fresh
+  // clock rather than inheriting the previous user's.
+  clearSignInStamp();
+
   return ok(null);
 }

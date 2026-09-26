@@ -13,7 +13,7 @@
  * `palette` is deliberately NOT exported. Raw ramps stay inside this folder.
  */
 
-export { useTheme, type Theme } from "./useTheme";
+export { ThemeProvider, useTheme, type Theme } from "./useTheme";
 export { colorsFor, type ColorPair, type Colors, type ColorScheme } from "./colors";
 export { layout, radius, spacing } from "./spacing";
 export { typography, type TypographyVariant } from "./typography";

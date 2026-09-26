@@ -3,8 +3,10 @@
  *
  * Owns: the current auth session, the matching `profiles` row, and the loading
  *   state while both are being resolved.
- * Does not own: signing in or out. Those are one-line `supabase.auth` calls made
- *   by the screens that own the forms — this module only observes the result.
+ * Does not own: signing in, or the forms that do it. The one exception is a
+ *   session that has outlived the five-day policy: ending that is part of owning
+ *   session state, not a transition a screen asked for. Every other change comes
+ *   from `auth.ts`.
  *
  * `src/types/profile.ts` anticipates exactly this: "Session state belongs to a
  * future `useCurrentUser()` hook, not to this file." This is that hook, and
@@ -16,6 +18,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 import type { Profile } from "@/types";
 
+import { isSessionStale } from "./sessionAge";
 import { supabase } from "./supabase";
 
 /** What {@link useSession} returns. */
@@ -78,9 +81,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+
     // Read the persisted session first so a returning user is not shown the
     // signed-out UI while the token is loaded from disk.
     supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+
+      // A refresh token outlives the five-day policy on its own, so holding a
+      // valid session is not sufficient to stay signed in. Ending it here is
+      // what makes the policy real.
+      //
+      // Scope is `local` deliberately: the rule is about how long *this device*
+      // may go without a password, so revoking the user's other sessions would
+      // overreach — and a local sign-out still succeeds with no network.
+      if (data.session !== null && isSessionStale()) {
+        void supabase.auth.signOut({ scope: "local" });
+        setSession(null);
+        setIsLoading(false);
+        return;
+      }
+
       setSession(data.session);
       setIsLoading(false);
     });
@@ -93,7 +114,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     });
 
-    return () => subscription.subscription.unsubscribe();
+    return () => {
+      active = false;
+      subscription.subscription.unsubscribe();
+    };
   }, []);
 
   const userId = session?.user.id ?? null;
