@@ -58,6 +58,28 @@ values
    now() - interval '305 days', now() - interval '305 days', now(),
    '{"provider":"email","providers":["email"]}', '{"display_name":"Alex Reid"}', false);
 
+-- GoTrue cannot read a row where these are NULL.
+--
+-- Every one of them is `varchar NULL` with no default in the auth schema, so an
+-- INSERT that omits them stores NULL — but GoTrue scans them into plain Go
+-- strings, and a NULL fails that scan. The failure surfaces at SIGN-IN, not at
+-- insert time, as HTTP 500 `unexpected_failure` / "Database error querying
+-- schema". It looks like a server fault rather than a seed fault, which is what
+-- makes it expensive to find.
+--
+-- The tell, if this ever regresses: a seeded account 500s while an account made
+-- through the app's own signup returns a normal 400, because GoTrue writes empty
+-- strings rather than NULLs.
+update auth.users
+set confirmation_token         = coalesce(confirmation_token, ''),
+    recovery_token             = coalesce(recovery_token, ''),
+    email_change               = coalesce(email_change, ''),
+    email_change_token_new     = coalesce(email_change_token_new, ''),
+    email_change_token_current = coalesce(email_change_token_current, ''),
+    phone_change               = coalesce(phone_change, ''),
+    phone_change_token         = coalesce(phone_change_token, ''),
+    reauthentication_token     = coalesce(reauthentication_token, '');
+
 -- Password sign-in needs a matching identity row.
 insert into auth.identities (
   id, user_id, identity_data, provider, provider_id,
