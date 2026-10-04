@@ -46,7 +46,13 @@ export type {
   Enums,
 } from "./database";
 
-export type { Profile, ProfilePreview } from "./profile";
+export type {
+  AccountStatus,
+  Campus,
+  MyProfile,
+  ProfilePreview,
+  PublicProfile,
+} from "./profile";
 
 export type { Conversation, ConversationSummary, Message } from "./messaging";
 

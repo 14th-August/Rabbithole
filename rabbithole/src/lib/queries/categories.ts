@@ -20,8 +20,8 @@ import { fail, ok, toMessage } from "./errors";
  *
  * Sorted by `position` then `name`. The tree is only two levels — enforced by a
  * trigger, because a CHECK constraint cannot run the subquery that asks whether a
- * parent itself has a parent — so callers can group by `parent_id` without
- * recursing.
+ * parent itself has a parent — so callers can group by `parent_category_id`
+ * without recursing.
  */
 export async function getCategories(db: Db): Promise<AsyncResult<Category[]>> {
   const { data, error } = await db
@@ -45,7 +45,7 @@ export async function getTopLevelCategories(db: Db): Promise<AsyncResult<Categor
   const { data, error } = await db
     .from("categories")
     .select("*")
-    .is("parent_id", null)
+    .is("parent_category_id", null)
     .order("position", { ascending: true });
 
   if (error) return fail(toMessage(error));

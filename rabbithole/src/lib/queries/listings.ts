@@ -73,7 +73,10 @@ export async function getFeed(
     .from("listing_summaries")
     .select("*")
     .in("status", FEED_STATUSES)
-    .order("created_at", { ascending: false })
+    // bumped_at, not created_at. Renewing a listing lifts it in the feed
+    // without rewriting its age, and `listings_feed_idx` is built on this
+    // column — ordering on created_at would silently stop using the index.
+    .order("bumped_at", { ascending: false })
     .range(from, from + FEED_PAGE_SIZE - 1);
 
   if (error) return fail(toMessage(error));
@@ -96,14 +99,17 @@ export async function getListing(
   const { data, error } = await db
     .from("listings")
     .select(
+      // The seller embed reads `public_profiles`, not `profiles`. The table
+      // denies most columns to clients outright — column grants, not RLS — so
+      // embedding it would fail at runtime even though the string type-checks.
       `*,
-       seller:profiles!listings_seller_id_fkey (
-         id, display_name, avatar_path, rating_avg, rating_count
+       seller:public_profiles!listings_seller_id_fkey (
+         id, username, avatar_path, rating_avg, rating_count
        ),
        category:categories!listings_category_id_fkey (
-         id, parent_id, slug, name, position
+         id, parent_category_id, slug, name, position
        ),
-       images:listing_images (id, listing_id, storage_path, position)`,
+       images:listing_images (id, listing_id, storage_path, position, width, height)`,
     )
     .eq("id", id)
     // The foreign keys are named explicitly because `conversations` has two FKs

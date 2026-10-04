@@ -82,6 +82,7 @@ Naming an agent explicitly always overrides this table.
 | --- | --- | --- |
 | "how does X work", "what are the trade-offs", "is X supported in SDK 57" — anything resting on a fact nobody in the session has verified | `researcher` | Findings with sources. No edits. |
 | "is this right", "does this fit", "review this", "should I refactor" — or a feature just landed | `architecture-reviewer` | Findings against these rules and the v1/v2 plan. No edits. |
+| A requirements artifact arrives — a proposal, spec, outline, ER diagram, use-case list — and the question is whether it is buildable as written | `requirements-checker` | What it contradicts, what it leaves undecided, what it costs. No edits. |
 | "how do I build X", "where should this go", starting any feature — the question is how to implement something that does not exist yet | `code-mentor` | An implementation brief: where it goes, what to reuse, the skeleton, the trade-offs, and the one first step. No code. |
 | "what does this file do", "why is it written this way", "explain", "teach me" — about code that already exists | `code-tutor` | An explanation pitched at someone learning the stack. No edits. |
 | "write tests", "add a regression test", a bug that needs one, harness setup | `test-engineer` | Test files, run. Never edits app code to make them pass. |

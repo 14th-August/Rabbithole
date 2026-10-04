@@ -153,6 +153,10 @@ const light: Colors = {
     reserved: { fg: palette.amber[500], bg: palette.amber.subtleLight },
     sold: { fg: palette.neutral[500], bg: palette.neutral[200] },
     removed: { fg: palette.red[500], bg: palette.red.subtleLight },
+    // Neutral rather than amber, which `reserved` owns. Expired is "lapsed,
+    // not wrong" — to a browser it is stale, to its owner it sits beside a
+    // Renew action, so it must not read as an error.
+    expired: { fg: palette.neutral[500], bg: palette.neutral[100] },
   },
 };
 
@@ -204,6 +208,9 @@ const dark: Colors = {
     reserved: { fg: palette.amber[400], bg: palette.amber.subtleDark },
     sold: { fg: "#7C8798", bg: "#262D38" },
     removed: { fg: palette.red[400], bg: palette.red.subtleDark },
+    // Dimmer ground than `sold` so the two are separable at a glance; the pair
+    // still carries its label, because meaning is never in colour alone.
+    expired: { fg: "#7C8798", bg: "#1F2630" },
   },
 };
 

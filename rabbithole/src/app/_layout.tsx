@@ -101,18 +101,16 @@ function RootNavigator() {
         whether a welcome is owed, and renders nothing at all when it is not, so
         the condition lives in one place rather than being restated here.
 
-        `display_name` can be null for a moment while the profiles row loads, so
-        the user metadata set at signup is the fallback — it arrives with the
-        session itself and is the same name the trigger wrote.
+        `username` is null for a moment while the profile loads. There is no
+        metadata fallback any more: the trigger generates a random username and
+        never reads signup metadata, because a VIU address is
+        PreferredName.LastName and anything derived from it would publish a real
+        name. "there" is the honest stand-in for that half-second.
       */}
       {isSignedIn ? (
         <WelcomeOverlay
           userId={session.user.id}
-          name={
-            profile?.display_name ??
-            (session.user.user_metadata.display_name as string | undefined) ??
-            "there"
-          }
+          name={profile?.username ?? "there"}
         />
       ) : null}
     </>

@@ -1,7 +1,8 @@
 /**
  * Display formatters for domain values.
  *
- * Owns: turning stored values into the strings the design rules mandate.
+ * Owns: turning stored values into the strings the design rules mandate, and
+ *   the one inverse — reading a typed price back into cents.
  * Does not own: the values themselves. `src/types` is types only and may hold
  *   no behaviour, which is why these live here rather than beside the types
  *   they format.
@@ -36,6 +37,33 @@ export function formatPrice(priceCents: number): string {
     minimumFractionDigits: hasCents ? 2 : 0,
     maximumFractionDigits: hasCents ? 2 : 0,
   });
+}
+
+/**
+ * Read a typed price back into integer cents, or `null` if it is not a price.
+ *
+ * The inverse of {@link formatPrice}, and deliberately its neighbour: the two
+ * have to agree on what "12.50" means, and splitting them across modules is how
+ * one drifts into accepting a shape the other never produces.
+ *
+ * Forgiving about what it takes — a leading `$`, thousands separators, and
+ * surrounding space all get stripped, because people paste prices as much as
+ * they type them. Strict about what it accepts afterwards: digits, optionally
+ * followed by one or two decimal places. `"free"`, `"12.345"`, and `"-5"` are
+ * all rejected rather than coerced into a number that looks plausible.
+ *
+ * `"0"` parses to `0`, which is a real price meaning free — callers must not
+ * treat a falsy result as "no price given". Only `null` means that.
+ */
+export function parsePriceToCents(value: string): number | null {
+  const cleaned = value.trim().replace(/[$,\s]/g, "");
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
+
+  // Split rather than multiply. `19.99 * 100` is 1998.9999999999998 in binary
+  // floating point; rounding it happens to be right, but assembling the cents
+  // from the digits themselves does not depend on that being true.
+  const [whole, fraction = ""] = cleaned.split(".");
+  return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
 }
 
 /** What {@link formatRating} returns, so callers can style the two cases differently. */

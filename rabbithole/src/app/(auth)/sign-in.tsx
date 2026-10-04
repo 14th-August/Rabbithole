@@ -4,28 +4,26 @@
  * Owns: the sign-in form, the values typed into it, and what to show while the
  * request is in flight.
  * Does not own: authenticating. That is `signIn` in `src/lib/auth.ts`. Nor
- * navigation once it succeeds — see `handleSubmit`.
+ * navigation once it succeeds — see `handleSubmit`. Nor the geometry of its own
+ * fields and button, which are `Field` and `Button` in `src/components`.
  *
  * This is the first screen a signed-out user sees. The root layout guards
  * `(tabs)` behind a session, and `(auth)/_layout.tsx` anchors this group here.
- *
- * Layout borrows Spotify's pill geometry — fully rounded fields and a fully
- * rounded primary action — on an otherwise plain iOS page. Deliberately not
- * borrowed: their uppercase, letter-spaced button labels, which read as brand
- * styling rather than platform convention and fight the HIG on iOS.
  */
 
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 // Not `icon.png`: that is the 1024px store icon. Rendering it at 96pt made
 // Metro ship 185 KB over the LAN on every dev reload and decode a 1024x1024
 // bitmap to fill a 96pt circle. Same artwork, sized for the job: 288px is 96pt
 // at @3x, the densest screen this renders on.
 import logo from "@/assets/images/logo-round.png";
+import { Button } from "@/components/Button";
+import { Field } from "@/components/Field";
 import { FieldError } from "@/components/FieldError";
 import { signIn } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
@@ -110,25 +108,6 @@ export default function SignIn() {
   // screen's hero size does not belong in the shared theme.
   const logoSize = spacing.xxxl * 2;
 
-  // Both fields share the pill. Defined once so they cannot drift apart.
-  //
-  // The border turns red for the whole form rather than per field, because the
-  // only failure the server will name is `invalid_credentials` — and it refuses
-  // to say which of the two was wrong, deliberately, so that sign-in cannot be
-  // used to discover which addresses have accounts. Marking one field would be
-  // inventing a detail the API withheld.
-  const fieldStyle = {
-    minHeight: layout.tapTargetMin,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.pill,
-    borderWidth: layout.borderWidth,
-    // No visible outline at rest. The width stays so an error can colour it in
-    // without the field growing by a pixel and nudging everything below it;
-    // matching the fill is what hides it rather than removing it.
-    borderColor: colors.surfaceSunken,
-    backgroundColor: colors.surfaceSunken,
-  };
-
   return (
     // Deliberately not a ScrollView. This screen is short enough to fit, and a
     // scroller here costs a second scrollable view mounted during the push to
@@ -164,58 +143,45 @@ export default function SignIn() {
         Buy and sell with students on your campus.
       </Text>
 
-      <TextInput
+      <Field
         value={form.email}
         onChangeText={(email) => updateField({ email })}
         editable={!submit.isPending}
         placeholder="Email"
-        placeholderTextColor={colors.text.placeholder}
         keyboardType="email-address"
         autoCapitalize="none"
         autoComplete="email"
         accessibilityLabel="Email address"
-        style={[
-          typography.body,
-          fieldStyle,
-          styles.fullWidth,
-          {
-            color: colors.text.primary,
-            marginTop: spacing.xxl,
-            // Only this field, and only when this field is the problem.
-            borderColor: fieldError !== null ? colors.status.danger : colors.surfaceSunken,
-          },
-        ]}
+        // Only this field, and only when this field is the problem.
+        error={fieldError !== null ? fieldError.message : null}
+        style={{ marginTop: spacing.xxl }}
       />
 
-      {fieldError !== null ? <FieldError message={fieldError.message} /> : null}
-
-      <View style={[fieldStyle, styles.fullWidth, styles.passwordRow, { marginTop: spacing.md }]}>
-        <TextInput
-          value={form.password}
-          onChangeText={(password) => updateField({ password })}
-          editable={!submit.isPending}
-          placeholder="Password"
-          placeholderTextColor={colors.text.placeholder}
-          secureTextEntry={!isPasswordVisible}
-          autoCapitalize="none"
-          autoComplete="current-password"
-          accessibilityLabel="Password"
-          style={[typography.body, styles.passwordInput, { color: colors.text.primary }]}
-        />
-
-        <Pressable
-          onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-          accessibilityRole="button"
-          accessibilityLabel={isPasswordVisible ? "Hide password" : "Show password"}
-          hitSlop={layout.hitSlop}
-        >
-          <Ionicons
-            name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
-            size={20}
-            color={colors.text.secondary}
-          />
-        </Pressable>
-      </View>
+      <Field
+        value={form.password}
+        onChangeText={(password) => updateField({ password })}
+        editable={!submit.isPending}
+        placeholder="Password"
+        secureTextEntry={!isPasswordVisible}
+        autoCapitalize="none"
+        autoComplete="current-password"
+        accessibilityLabel="Password"
+        style={{ marginTop: spacing.md }}
+        trailing={
+          <Pressable
+            onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+            accessibilityRole="button"
+            accessibilityLabel={isPasswordVisible ? "Hide password" : "Show password"}
+            hitSlop={layout.hitSlop}
+          >
+            <Ionicons
+              name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color={colors.text.secondary}
+            />
+          </Pressable>
+        }
+      />
 
       {/*
         Same inline treatment as a field error, but attached to no field. The
@@ -226,30 +192,13 @@ export default function SignIn() {
       */}
       {submit.error !== null ? <FieldError message={submit.error} /> : null}
 
-      <Pressable
+      <Button
+        label="Log in"
         onPress={handleSubmit}
         disabled={!canSubmit}
-        accessibilityRole="button"
-        accessibilityLabel="Log in"
-        accessibilityState={{ disabled: !canSubmit }}
-        style={[
-          styles.button,
-          styles.fullWidth,
-          {
-            minHeight: layout.tapTargetMin,
-            borderRadius: radius.pill,
-            backgroundColor: colors.brand.default,
-            marginTop: spacing.xl,
-            opacity: canSubmit ? 1 : 0.5,
-          },
-        ]}
-      >
-        {submit.isPending ? (
-          <ActivityIndicator color={colors.brand.onBrand} />
-        ) : (
-          <Text style={[typography.bodyStrong, { color: colors.brand.onBrand }]}>Log in</Text>
-        )}
-      </Pressable>
+        isPending={submit.isPending}
+        style={{ marginTop: spacing.xl }}
+      />
 
       <View style={[styles.footer, { marginTop: spacing.xl }]}>
         <Text style={[typography.footnote, { color: colors.text.secondary }]}>
@@ -271,20 +220,6 @@ const styles = StyleSheet.create({
   },
   centered: {
     textAlign: "center",
-  },
-  fullWidth: {
-    width: "100%",
-  },
-  passwordRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  passwordInput: {
-    flex: 1,
-  },
-  button: {
-    alignItems: "center",
-    justifyContent: "center",
   },
   footer: {
     flexDirection: "row",

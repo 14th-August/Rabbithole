@@ -17,7 +17,10 @@ import type { AuthError, Session } from "@supabase/supabase-js";
 import type { Db } from "@/lib/supabase";
 import type { AsyncResult } from "@/lib/useAsync";
 
-import { fail, ok } from "./queries/errors";
+// `toMessage` as well as the local `toAuthMessage`: the availability check is
+// an RPC and fails with a PostgrestError, not an AuthError. They are different
+// error shapes with different codes, so they get different translators.
+import { fail, ok, toMessage } from "./queries/errors";
 import { clearSignInStamp, markSignedIn } from "./sessionAge";
 import { markWelcomePending } from "./welcome";
 
@@ -107,13 +110,51 @@ function toAuthMessage(error: AuthError): string {
 }
 
 /**
+ * Whether a username is well formed and unclaimed.
+ *
+ * Calls `is_username_available`, which is granted to `anon` precisely because
+ * signup has no session yet. The comparison is case-insensitive server-side —
+ * `profiles.username` is `citext` — so `Kelp_Quay` and `kelp_quay` are the
+ * same name and this will say so.
+ *
+ * A `false` from a malformed username is indistinguishable from a `false` from
+ * a taken one, which is why {@link validateUsername} runs first: it names the
+ * shape problem, and this answers only the question it alone can answer.
+ *
+ * On a network failure this returns the failure rather than guessing. Treating
+ * "could not check" as "available" would push the user into a signup that then
+ * fails on the trigger.
+ */
+export async function isUsernameAvailable(
+  db: Db,
+  username: string,
+): Promise<AsyncResult<boolean>> {
+  const { data, error } = await db.rpc("is_username_available", {
+    p_username: username.trim(),
+  });
+
+  if (error) return fail(toMessage(error));
+  return ok(data === true);
+}
+
+/**
  * Create an account and send a 6-digit confirmation code.
  *
- * `display_name` rides in `options.data`, which lands in `raw_user_meta_data` —
- * exactly where the `handle_new_user()` trigger reads it to populate
- * `public.profiles.display_name`. Omit it and the trigger silently falls back to
- * the email local part, so the account works and the name field quietly did
- * nothing. That is the failure worth watching for after wiring the form.
+ * `username` rides in `options.data`, which lands in `raw_user_meta_data`,
+ * where `handle_new_user()` reads it. Omit it and the trigger generates a
+ * random one instead — both paths are supported, and the random one is the
+ * default rather than a fallback for errors.
+ *
+ * No real name is collected, and that is a privacy decision rather than a
+ * simplification. A VIU address is `PreferredName.LastName@my.viu.ca`, and
+ * `profiles` is readable by every signed-in user, so any real name on it —
+ * typed or derived from the email — publishes the campus directory.
+ *
+ * Metadata is client-controlled, so the trigger re-validates the username
+ * rather than trusting it, and the UNIQUE index catches the race between the
+ * availability check and the insert. When that race is lost, GoTrue reports a
+ * generic 500, so this function re-checks availability to turn it back into a
+ * sentence the user can act on.
  *
  * @returns Only the email, never the user. Supabase deliberately returns an
  *   obfuscated user with an empty `identities` array when an address is already
@@ -124,18 +165,29 @@ function toAuthMessage(error: AuthError): string {
  */
 export async function signUp(
   db: Db,
-  input: { name: string; email: string; password: string },
+  input: { username: string; email: string; password: string },
 ): Promise<AsyncResult<{ email: string }>> {
   const email = input.email.trim().toLowerCase();
+  const username = input.username.trim();
 
   const { error } = await db.auth.signUp({
     email,
     password: input.password,
-    options: { data: { display_name: input.name.trim() } },
+    options: { data: { username } },
   });
 
-  if (error) return fail(toAuthMessage(error));
-  return ok({ email });
+  if (error === null) return ok({ email });
+
+  // The trigger raises on a taken username, and GoTrue flattens that into an
+  // opaque 500. Ask the question again: if the name went in the half-second
+  // between the form's check and the insert, say so, because "something went
+  // wrong" would send the user to retry the identical form.
+  const recheck = await isUsernameAvailable(db, username);
+  if (recheck.data === false) {
+    return fail(`${username} was just taken. Try another username.`);
+  }
+
+  return fail(toAuthMessage(error));
 }
 
 /**

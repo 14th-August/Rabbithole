@@ -5,7 +5,8 @@
  * agree, and what to show while the request is in flight.
  * Does not own: creating the account. That is `signUp` in `src/lib/auth.ts`.
  * Nor enforcing the VIU rule — the gate is a server-side auth hook, so this
- * screen only relays whatever it says.
+ * screen only relays whatever it says. Nor the geometry of its own fields and
+ * button, which are `Field` and `Button` in `src/components`.
  *
  * Deliberately mirrors `sign-in.tsx` element for element — same logo at the same
  * size, same spacing rhythm, same pill fields and button — so moving between the
@@ -18,33 +19,28 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import logo from "@/assets/images/logo-round.png";
+import { Button } from "@/components/Button";
+import { Field } from "@/components/Field";
 import { FieldError } from "@/components/FieldError";
-import { signUp } from "@/lib/auth";
+import { isUsernameAvailable, signUp } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/useAsync";
-import { isCampusEmail, isValidEmail } from "@/lib/validation";
+import { isCampusEmail, isValidEmail, validateUsername } from "@/lib/validation";
 import { useTheme } from "@/theme";
 
 /**
  * The values this form collects.
  *
- * `name` and `email` map to columns the `profiles` row needs; `password` never
- * reaches that table — auth stores it separately. `confirmPassword` never leaves
- * this screen at all.
+ * `username` becomes `profiles.username`; `email` never reaches that table at
+ * all, and neither does a real name — a VIU address carries one, which is why
+ * the profile is pseudonymous. `password` is stored by auth, separately.
+ * `confirmPassword` never leaves this screen.
  */
 interface SignUpForm {
-  name: string;
+  username: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -56,7 +52,7 @@ export default function SignUp() {
   const router = useRouter();
 
   const [form, setForm] = useState<SignUpForm>({
-    name: "",
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -66,18 +62,18 @@ export default function SignUp() {
   // because one is malformed makes the user hunt for a problem the UI already
   // knows the location of.
   const [fieldError, setFieldError] = useState<{
-    field: "email" | "confirmPassword";
+    field: "username" | "email" | "confirmPassword";
     message: string;
   } | null>(null);
 
   // The client is bound once here. `signUp` takes it as an argument so it can
   // run outside the app, but a screen only ever has the one.
-  const submit = useAsync((input: { name: string; email: string; password: string }) =>
+  const submit = useAsync((input: { username: string; email: string; password: string }) =>
     signUp(supabase, input),
   );
 
   const isComplete =
-    form.name.trim() !== "" &&
+    form.username.trim() !== "" &&
     form.email.trim() !== "" &&
     form.password !== "" &&
     form.confirmPassword !== "";
@@ -95,10 +91,46 @@ export default function SignUp() {
     submit.clearError();
   }
 
+  /**
+   * Check the username once the user leaves the field, not on every keystroke.
+   *
+   * A request per character would ask the server about `k`, `ke`, `kel` — all
+   * available, none meaningful — and would tell someone their username is
+   * taken while they are still halfway through typing it.
+   *
+   * A stale answer here is not dangerous. The database re-validates on insert
+   * and `signUp` turns a lost race back into a sentence, so this is a
+   * courtesy, never the guarantee.
+   */
+  async function handleUsernameBlur() {
+    const username = form.username.trim();
+    if (username === "") return;
+
+    const shape = validateUsername(username);
+    if (shape !== null) {
+      setFieldError({ field: "username", message: shape });
+      return;
+    }
+
+    const check = await isUsernameAvailable(supabase, username);
+    // A failed check says nothing either way, so it says nothing. Claiming
+    // "available" on a network error would walk the user into a signup that
+    // the trigger then refuses.
+    if (check.data === false) {
+      setFieldError({ field: "username", message: `${username} is taken.` });
+    }
+  }
+
   async function handleSubmit() {
     // Ordered widest-to-narrowest so the message names the first thing actually
     // wrong. Checking the campus domain first would tell someone who typed their
-    // name to use a @my.viu.ca address, which is true but not the problem.
+    // username to use a @my.viu.ca address, which is true but not the problem.
+    const usernameProblem = validateUsername(form.username);
+    if (usernameProblem !== null) {
+      setFieldError({ field: "username", message: usernameProblem });
+      return;
+    }
+
     if (!isValidEmail(form.email)) {
       setFieldError({ field: "email", message: "Enter a valid email address." });
       return;
@@ -123,8 +155,12 @@ export default function SignUp() {
       return;
     }
 
+    // Availability is deliberately NOT re-checked here. Between a check and
+    // the insert there is always a window, so the only check that can be
+    // trusted is the one the database makes — `signUp` asks again only after
+    // a failure, to turn an opaque 500 into "that was just taken".
     const created = await submit.run({
-      name: form.name,
+      username: form.username,
       email: form.email,
       password: form.password,
     });
@@ -140,19 +176,6 @@ export default function SignUp() {
   // 96 — two steps of the grid's largest token. Same derivation as sign-in, so
   // the logo does not shift by a pixel across the transition.
   const logoSize = spacing.xxxl * 2;
-
-  // All four fields share the pill. Defined once so they cannot drift apart.
-  const fieldStyle = {
-    minHeight: layout.tapTargetMin,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.pill,
-    borderWidth: layout.borderWidth,
-    // No visible outline at rest. The width stays so an error can colour it in
-    // without the field growing by a pixel and nudging everything below it;
-    // matching the fill is what hides it rather than removing it.
-    borderColor: colors.surfaceSunken,
-    backgroundColor: colors.surfaceSunken,
-  };
 
   return (
     <ScrollView
@@ -192,108 +215,81 @@ export default function SignUp() {
         Use your campus email so other students know you study here.
       </Text>
 
-      <TextInput
-        value={form.name}
-        onChangeText={(name) => updateField({ name })}
+      {/*
+        A username, not a name. `autoComplete="username"` and
+        `autoCapitalize="none"` both matter: the keyboard's default capital
+        would produce `Kelp_quay`, which the server treats as the same name as
+        `kelp_quay` but shows back with the capital, and people read that as
+        the app having changed what they typed.
+      */}
+      <Field
+        value={form.username}
+        onChangeText={(username) => updateField({ username })}
+        onBlur={handleUsernameBlur}
         editable={!submit.isPending}
-        placeholder="Enter your name"
-        placeholderTextColor={colors.text.placeholder}
-        autoComplete="name"
-        accessibilityLabel="Your name"
-        style={[
-          typography.body,
-          fieldStyle,
-          styles.fullWidth,
-          { color: colors.text.primary, marginTop: spacing.xxl },
-        ]}
+        placeholder="Pick a username"
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="username"
+        accessibilityLabel="Username"
+        error={fieldError?.field === "username" ? fieldError.message : null}
+        style={{ marginTop: spacing.xxl }}
       />
 
-      <TextInput
+      <Field
         value={form.email}
         onChangeText={(email) => updateField({ email })}
         editable={!submit.isPending}
         placeholder="first.last@my.viu.ca"
-        placeholderTextColor={colors.text.placeholder}
         keyboardType="email-address"
         autoCapitalize="none"
         autoComplete="email"
         accessibilityLabel="Campus email address"
-        style={[
-          typography.body,
-          fieldStyle,
-          styles.fullWidth,
-          {
-            color: colors.text.primary,
-            marginTop: spacing.md,
-            borderColor:
-              fieldError?.field === "email" ? colors.status.danger : colors.surfaceSunken,
-          },
-        ]}
+        error={fieldError?.field === "email" ? fieldError.message : null}
+        style={{ marginTop: spacing.md }}
       />
 
-      {fieldError?.field === "email" ? <FieldError message={fieldError.message} /> : null}
+      <Field
+        value={form.password}
+        onChangeText={(password) => updateField({ password })}
+        editable={!submit.isPending}
+        placeholder="Password"
+        secureTextEntry={!isPasswordVisible}
+        autoCapitalize="none"
+        autoComplete="new-password"
+        accessibilityLabel="Password"
+        style={{ marginTop: spacing.md }}
+        trailing={
+          // One toggle drives both fields. Revealing only one of a pair leaves
+          // the typo hidden in the other, which is the exact thing the second
+          // field exists to catch.
+          <Pressable
+            onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+            accessibilityRole="button"
+            accessibilityLabel={isPasswordVisible ? "Hide passwords" : "Show passwords"}
+            hitSlop={layout.hitSlop}
+          >
+            <Ionicons
+              name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color={colors.text.secondary}
+            />
+          </Pressable>
+        }
+      />
 
-      <View style={[fieldStyle, styles.fullWidth, styles.passwordRow, { marginTop: spacing.md }]}>
-        <TextInput
-          value={form.password}
-          onChangeText={(password) => updateField({ password })}
-          editable={!submit.isPending}
-          placeholder="Password"
-          placeholderTextColor={colors.text.placeholder}
-          secureTextEntry={!isPasswordVisible}
-          autoCapitalize="none"
-          autoComplete="new-password"
-          accessibilityLabel="Password"
-          style={[typography.body, styles.passwordInput, { color: colors.text.primary }]}
-        />
-
-        {/*
-          One toggle drives both fields. Revealing only one of a pair leaves the
-          typo hidden in the other, which is the exact thing the second field
-          exists to catch.
-        */}
-        <Pressable
-          onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-          accessibilityRole="button"
-          accessibilityLabel={isPasswordVisible ? "Hide passwords" : "Show passwords"}
-          hitSlop={layout.hitSlop}
-        >
-          <Ionicons
-            name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
-            size={20}
-            color={colors.text.secondary}
-          />
-        </Pressable>
-      </View>
-
-      <TextInput
+      <Field
         value={form.confirmPassword}
         onChangeText={(confirmPassword) => updateField({ confirmPassword })}
         editable={!submit.isPending}
         placeholder="Confirm password"
-        placeholderTextColor={colors.text.placeholder}
         secureTextEntry={!isPasswordVisible}
         autoCapitalize="none"
         autoComplete="new-password"
         accessibilityLabel="Confirm password"
-        style={[
-          typography.body,
-          fieldStyle,
-          styles.fullWidth,
-          {
-            color: colors.text.primary,
-            marginTop: spacing.md,
-            borderColor:
-              fieldError?.field === "confirmPassword"
-                ? colors.status.danger
-                : colors.surfaceSunken,
-          },
-        ]}
+        error={fieldError?.field === "confirmPassword" ? fieldError.message : null}
+        style={{ marginTop: spacing.md }}
       />
-
-      {fieldError?.field === "confirmPassword" ? (
-        <FieldError message={fieldError.message} />
-      ) : null}
 
       {/*
         Form-level, so it belongs to no single input — the VIU gate's refusal, an
@@ -302,34 +298,13 @@ export default function SignUp() {
       */}
       {submit.error !== null ? <FieldError message={submit.error} /> : null}
 
-      <Pressable
+      <Button
+        label="Create account"
         onPress={handleSubmit}
         disabled={!canSubmit}
-        accessibilityRole="button"
-        accessibilityLabel="Create account"
-        // `busy` is what makes the wait audible; `disabled` alone reads as
-        // "unavailable", which is a different and misleading thing to announce.
-        accessibilityState={{ disabled: !canSubmit, busy: submit.isPending }}
-        style={[
-          styles.button,
-          styles.fullWidth,
-          {
-            minHeight: layout.tapTargetMin,
-            borderRadius: radius.pill,
-            backgroundColor: colors.brand.default,
-            marginTop: spacing.xl,
-            opacity: canSubmit ? 1 : 0.5,
-          },
-        ]}
-      >
-        {submit.isPending ? (
-          <ActivityIndicator color={colors.brand.onBrand} />
-        ) : (
-          <Text style={[typography.bodyStrong, { color: colors.brand.onBrand }]}>
-            Create account
-          </Text>
-        )}
-      </Pressable>
+        isPending={submit.isPending}
+        style={{ marginTop: spacing.xl }}
+      />
 
       {/*
         Dimmed and inert while the request is in flight. An account is being
@@ -359,20 +334,6 @@ const styles = StyleSheet.create({
   },
   centered: {
     textAlign: "center",
-  },
-  fullWidth: {
-    width: "100%",
-  },
-  passwordRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  passwordInput: {
-    flex: 1,
-  },
-  button: {
-    alignItems: "center",
-    justifyContent: "center",
   },
   footer: {
     flexDirection: "row",

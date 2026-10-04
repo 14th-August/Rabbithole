@@ -4,7 +4,8 @@
  * Owns: entering the 6-digit code from the confirmation email, and asking for a
  * new one.
  * Does not own: sending the code. `signUp` in `src/lib/auth.ts` did that; this
- * screen only completes what it started.
+ * screen only completes what it started. Nor the geometry of its own field and
+ * buttons, which are `Field` and `Button` in `src/components`.
  *
  * Reached from sign-up with the address as a route param. A user here has an
  * account but **no session** — email confirmation is on, so `signUp` returns a
@@ -18,18 +19,11 @@
 import { Image } from "expo-image";
 import { Link, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import logo from "@/assets/images/logo-round.png";
-import { FieldError } from "@/components/FieldError";
+import { Button } from "@/components/Button";
+import { Field } from "@/components/Field";
 import { RESEND_COOLDOWN_SECONDS, confirmSignUp, resendSignUpCode } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/useAsync";
@@ -40,7 +34,7 @@ const CODE_LENGTH = 6;
 
 /** The verify screen. */
 export default function Verify() {
-  const { colors, spacing, radius, layout, typography } = useTheme();
+  const { colors, spacing, radius, typography } = useTheme();
 
   // Query params are never guaranteed at runtime — typed routes check that a
   // route exists, not that it was given the params it wants. Someone opening
@@ -80,18 +74,6 @@ export default function Verify() {
   // 96 — two steps of the grid's largest token. Same derivation as the other two
   // auth screens, so the logo does not shift across the transition.
   const logoSize = spacing.xxxl * 2;
-
-  const fieldStyle = {
-    minHeight: layout.tapTargetMin,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.pill,
-    borderWidth: layout.borderWidth,
-    // Invisible at rest, red when the code is rejected. The width never changes,
-    // so colouring it in cannot shift the layout.
-    borderColor: submit.error !== null ? colors.status.danger : colors.surfaceSunken,
-    backgroundColor: colors.surfaceSunken,
-    color: colors.text.primary,
-  };
 
   /**
    * Keep only digits, and never more than the code length.
@@ -204,11 +186,11 @@ export default function Verify() {
         We sent a {CODE_LENGTH}-digit code to {email}.
       </Text>
 
-      <TextInput
+      {/* Genuinely field-level here: the only thing that can be wrong is the code. */}
+      <Field
         value={code}
         onChangeText={handleChangeCode}
         placeholder="000000"
-        placeholderTextColor={colors.text.placeholder}
         keyboardType="number-pad"
         maxLength={CODE_LENGTH}
         // Offers the code above the keyboard on iOS once the email arrives —
@@ -217,74 +199,39 @@ export default function Verify() {
         autoComplete="one-time-code"
         accessibilityLabel="Confirmation code"
         editable={!submit.isPending}
-        style={[
-          typography.title2,
-          fieldStyle,
-          styles.fullWidth,
-          styles.code,
-          { marginTop: spacing.xxl, letterSpacing: spacing.sm },
-        ]}
+        error={submit.error}
+        // Larger than ordinary form input: the code is the subject of the screen,
+        // not a detail on it.
+        variant="title2"
+        inputStyle={{ textAlign: "center", letterSpacing: spacing.sm }}
+        style={{ marginTop: spacing.xxl }}
       />
 
-      {/* Genuinely field-level here: the only thing that can be wrong is the code. */}
-      {submit.error !== null ? <FieldError message={submit.error} /> : null}
-
-      <Pressable
+      <Button
+        label="Confirm"
         onPress={handleSubmit}
         disabled={!canSubmit}
-        accessibilityRole="button"
-        accessibilityLabel="Confirm code"
         // Deliberately reads `submit`, never `resend`. The two run independently,
         // and conflating them would make the Confirm button claim to be working
         // while the user is only waiting on a new email.
-        accessibilityState={{ disabled: !canSubmit, busy: submit.isPending }}
-        style={[
-          styles.button,
-          styles.fullWidth,
-          {
-            minHeight: layout.tapTargetMin,
-            borderRadius: radius.pill,
-            backgroundColor: colors.brand.default,
-            marginTop: spacing.xl,
-            opacity: canSubmit ? 1 : 0.5,
-          },
-        ]}
-      >
-        {submit.isPending ? (
-          <ActivityIndicator color={colors.brand.onBrand} />
-        ) : (
-          <Text style={[typography.bodyStrong, { color: colors.brand.onBrand }]}>Confirm</Text>
-        )}
-      </Pressable>
+        isPending={submit.isPending}
+        style={{ marginTop: spacing.xl }}
+      />
 
-      <Pressable
-        onPress={handleResend}
-        disabled={secondsLeft > 0 || resend.isPending || submit.isPending}
-        accessibilityRole="button"
+      <Button
+        variant="ghost"
+        label={secondsLeft > 0 ? `Send a new code in ${secondsLeft}s` : "Send a new code"}
+        // The countdown label changes every second and reads badly out loud, so
+        // the announced name stays put while the visible text ticks.
         accessibilityLabel="Send a new code"
-        accessibilityState={{
-          disabled: secondsLeft > 0 || resend.isPending || submit.isPending,
-          busy: resend.isPending,
-        }}
-        hitSlop={layout.hitSlop}
-        style={[styles.button, { minHeight: layout.tapTargetMin, marginTop: spacing.md }]}
-      >
-        {resend.isPending ? (
-          // Its own indicator rather than the button's. Requesting a new email is
-          // a separate wait from confirming a code, and one spinner for both
-          // would misreport which call is actually running.
-          <ActivityIndicator color={colors.brand.default} />
-        ) : (
-          <Text
-            style={[
-              typography.footnote,
-              { color: secondsLeft > 0 ? colors.text.tertiary : colors.brand.default },
-            ]}
-          >
-            {secondsLeft > 0 ? `Send a new code in ${secondsLeft}s` : "Send a new code"}
-          </Text>
-        )}
-      </Pressable>
+        onPress={handleResend}
+        disabled={secondsLeft > 0 || submit.isPending}
+        // Its own indicator rather than the Confirm button's. Requesting a new
+        // email is a separate wait from confirming a code, and one spinner for
+        // both would misreport which call is actually running.
+        isPending={resend.isPending}
+        style={{ marginTop: spacing.md }}
+      />
 
       {resend.error !== null ? (
         <Text
@@ -330,16 +277,6 @@ const styles = StyleSheet.create({
   },
   centered: {
     textAlign: "center",
-  },
-  fullWidth: {
-    width: "100%",
-  },
-  code: {
-    textAlign: "center",
-  },
-  button: {
-    alignItems: "center",
-    justifyContent: "center",
   },
   footer: {
     flexDirection: "row",

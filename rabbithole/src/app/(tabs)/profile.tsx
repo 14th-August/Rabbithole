@@ -55,7 +55,11 @@ export default function Profile() {
   // `profile` is null for a moment after launch while the row loads, and for the
   // window between signup and confirmation. The email always exists, so it is
   // the honest fallback rather than a spinner over the whole screen.
-  const name = profile?.display_name ?? session?.user.email ?? "Signed in";
+  //
+  // Showing the email here is fine precisely because this is the signed-in
+  // user's own screen. It must never reach a card or another user's profile —
+  // that is why there is no email column on `profiles` at all.
+  const name = profile?.username ?? session?.user.email ?? "Signed in";
 
   return (
     <View

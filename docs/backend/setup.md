@@ -112,9 +112,20 @@ best-effort. One OTP attempt is one email, so you and one other tester will exha
 it in under a minute, and the failure looks like a broken app rather than a quota.
 
 [Resend](https://resend.com) is the shortest path: sign up, verify a domain (or use
-their test sender to start), create an API key, then in Supabase set host
-`smtp.resend.com`, port `465`, username `resend`, password = the API key, and a
-sender address you control.
+their test sender to start), create an API key, then set host `smtp.resend.com`,
+port `587`, username `resend`, password = the API key, and a sender address you
+control.
+
+**Use port 587, not 465.** GoTrue opens the connection in plaintext and waits for a
+`220` greeting before negotiating STARTTLS. Port 465 is implicit TLS and sends no
+plaintext greeting, so GoTrue hangs and the request dies with a 504
+`context_timeout` after ten seconds — with nothing in the log naming SMTP as the
+cause. Verified 2026-09-29.
+
+**Until a domain is verified, Resend delivers only to the address the account is
+registered to** (`casey.adams@my.viu.ca`). Anything else is refused with a 403 at
+Resend's API. Signing up as `maya.chen@my.viu.ca` to test will pass the VIU gate and
+then silently fail to send.
 
 ### 12. Switch the confirmation email to a code
 
@@ -169,7 +180,7 @@ a look.
 
 | Difference | Why it is fine |
 | --- | --- |
-| `auth.email.smtp.*` present remotely, absent locally | Local uses the Mailpit catcher on `:54324`; SMTP is a hosted-only concern. |
+| `auth.email.smtp.*` — both now set | Was hosted-only while local used the Mailpit catcher. Since 2026-09-29 local relays through Resend too, so this row is no longer a difference. |
 | `auth.email.max_frequency` — local `1s`, remote `1m` | Local needs fast resends to test. **The hosted 1-minute throttle is the number the verify screen's resend cooldown must respect.** |
 | `storage.analytics.enabled` / `storage.vector.enabled` off locally | Windows + 4 GB Docker workarounds, below. Never push these up. |
 | `storage.image_transformation.enabled` remote only | A hosted platform feature with no local equivalent. |
@@ -290,10 +301,14 @@ happens otherwise.
 | API gateway — what the app talks to | `http://localhost:54321` |
 | Postgres | `postgresql://postgres:postgres@localhost:54322/postgres` |
 | Studio | `http://localhost:54323` |
-| Mailpit — reads confirmation codes locally | `http://localhost:54324` |
+| Mailpit — catches auth email when SMTP is off | `http://localhost:54324` |
 
-Signup sends a 6-digit code rather than a link, so confirming an account locally
-means opening Mailpit and reading the code out of the email. Nothing is sent.
+Signup sends a 6-digit code rather than a link, so confirming an account means
+reading six digits out of the email.
+
+**Mail leaves the machine now.** `[auth.email.smtp]` is enabled in `config.toml`, so
+GoTrue relays through Resend and Mailpit stops receiving. Disable that block and
+restart to put the catcher back in the path.
 
 **Editing the email template requires restarting Auth.** GoTrue reads
 `supabase/templates/confirmation.html` once at container start and caches it, so a

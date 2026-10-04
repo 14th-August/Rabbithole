@@ -11,9 +11,10 @@ the `Agent` tool, or asked for by name ("use the code-tutor subagent").
 | `architecture-reviewer` | Judges whether code fits the system and the v1/v2 plan | Read, Glob, Grep, Bash | opus (high) | **No** |
 | `code-mentor` | Designs an implementation *before* it is written — placement, reuse, skeleton, trade-offs, first step | Read, Glob, Grep, WebFetch | opus (high) | **No** |
 | `code-tutor` | Explains files, patterns, and stack concepts that already exist | Read, Glob, Grep, WebFetch | opus | **No** |
+| `requirements-checker` | Checks a proposal or spec against the rules, the schema, and itself — before it is built | Read, Glob, Grep, Bash, Claude Docs (read) | opus (high) | **No** |
 | `test-engineer` | Writes and runs tests; sets up the harness | Read, Write, Edit, Glob, Grep, Bash | sonnet (high) | Tests only |
 
-**Three of four are read-only by design.** Tools are the real permission boundary —
+**Five of six are read-only by design.** Tools are the real permission boundary —
 an agent with no `Write` cannot edit no matter what its prompt says, and a prompt
 that says "do not edit" while holding `Write` is a suggestion. Research, review, and
 explanation are advisory roles; only `test-engineer` produces files, and only test
@@ -31,6 +32,9 @@ that role should retain — this is what makes them roles rather than one-off pr
   it stops re-raising decisions the user consciously made.
 - `code-tutor` keeps **what has been explained and where understanding was shaky**,
   so teaching compounds instead of restarting.
+- `requirements-checker` keeps **each proposal reviewed and how its open questions
+  were answered**, so the next revision is reviewed as a diff and a settled question
+  is never raised twice.
 - `test-engineer` keeps **harness configuration and known-flaky tests**, because
   rediscovering Jest + React Native config every session is pure waste.
 
@@ -49,6 +53,10 @@ Deliberate, and worth changing if the trade-off feels wrong:
   is most expensive.
 - **`code-tutor` runs on opus** — explanation quality *is* the deliverable. A cheap
   wrong explanation to someone learning is worse than none, because they build on it.
+- **`requirements-checker` runs on opus at high effort** — the finding it exists to
+  produce is "this silently reverses a decision made three documents ago", which
+  needs two documents held in mind at once. A cheap model lists what a proposal
+  says; it does not notice what the proposal contradicts.
 - **`test-engineer` runs on sonnet at high effort** — mechanical work, but the edge
   cases need care.
 

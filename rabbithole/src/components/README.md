@@ -26,10 +26,22 @@ wearing the wrong hat; move the fetch up to the route and pass the data down.
 | Component | Purpose |
 | --- | --- |
 | `BootScreen` | Branded launch placeholder, colour-matched to the native splash so the handover is invisible. |
+| `Button` | The pill button, in `primary` (filled brand) and `ghost` (text-only) variants. Owns the disabled and in-flight treatments. |
+| `Field` | The pill text input. Owns the geometry, the error colouring, and placing the message beneath. Takes an optional `trailing` accessory. |
+| `FieldError` | One line of danger-coloured text with an alert icon, announced to screen readers. Used both against a field and, on its own, for form-level failures. |
 
-## Known gap
+## Closed gap
 
-The auth screens still repeat their own field and button styling — `inputStyle`
-is defined three times across `sign-in`, `sign-up`, and `verify`, and the
-tap-target button block four times. Those are the next two components to land
-here, in that order.
+`Field` and `Button` landed together and the three auth screens were migrated
+onto them, retiring the `fieldStyle` object literal that had been defined once
+per screen and the tap-target button block that appeared four times between them.
+
+Two things that fell out of the extraction and are worth keeping:
+
+- **The pill's border is always present, never added on error.** It sits at
+  `colors.surfaceSunken`, matching the fill, so it is invisible at rest. An error
+  recolours it rather than introducing it — adding a border would grow the field
+  by a pixel and nudge everything below it.
+- **`ghost` recolours where `primary` dims.** Halving the opacity of small text
+  fails contrast, so a disabled text-only button moves to `colors.text.tertiary`
+  instead of inheriting the filled pill's `opacity: 0.5`.

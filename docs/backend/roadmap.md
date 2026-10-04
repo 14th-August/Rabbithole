@@ -13,15 +13,20 @@ document.
 
 | Phase | What | State |
 | --- | --- | --- |
-| 0 | Prerequisites — Docker, Supabase project, custom SMTP | 🚧 Docker + project done; **SMTP outstanding** |
+| 0 | Prerequisites — Docker, Supabase project, custom SMTP | 🚧 Docker + project done; SMTP relays to a real inbox 2026-09-29, **domain unverified** so only one recipient works |
 | 1 | Design documents and the ER diagram | ✅ 2026-09-18 |
 | 2 | Install, `supabase init`, migration workflow | ✅ 2026-09-18 |
-| 3 | Schema migrations, RLS, seed | ✅ 2026-09-18 — `db reset` replays clean; RLS proven negative |
-| 4 | Authentication — the VIU gate | ✅ locally — gate + OTP round-trip verified. Hosted project still needs dashboard config |
-| 5 | Client data layer (`src/lib/`) | 🚧 `supabase.ts`, `session.tsx`, `storage.ts`, `format.ts` done; `queries/` outstanding |
-| 6 | Wire the auth screens | ⬜ |
+| 3 | Schema migrations, RLS, seed | ✅ **rebuilt 2026-10-03** — 8 tables → 17. `db reset` replays clean locally and on the hosted project; 21 checks in `supabase/checks/rls.sql` pass |
+| 4 | Authentication — the VIU gate | ✅ local **and hosted** — the hook is registered; a `curl` signup from a `@gmail.com` address returns 403 with the gate's own message (2026-10-03) |
+| 5 | Client data layer (`src/lib/`) | 🚧 `supabase.ts`, `session.tsx`, `storage.ts`, `format.ts`, `queries/{listings,categories}` done and re-pointed at the new schema; `queries/` for orders, follows, reports outstanding |
+| 6 | Wire the auth screens | 🚧 sign-in / sign-up / verify built; username-at-signup in progress |
 
 Tick a row here when a phase lands. This table is the answer to "where are we".
+
+**The hosted project is live and current.** All migrations are applied to
+`cwdqplnwvavsfsjaknoq`, which holds the reference data and no fixtures.
+`supabase/seed.sql` must never run against it — it creates five accounts with a
+known password. Use `db reset --linked --no-seed`.
 
 ---
 
@@ -35,9 +40,25 @@ here, in a commit, with a reason — do not re-litigate it from scratch.
 | Email gate | `@my.viu.ca` only | It is VIU's documented *student* domain. `@viu.ca` is employees, and this is a student marketplace. |
 | Student number | **Dropped** (reversed 2026-09-18, after being designed) | A verified `@my.viu.ca` address already proves VIU membership. The number could not be verified against VIU's records, so it added PII and a whole second table in exchange for nothing the email did not already do. |
 | Verification | Password + 6-digit email OTP | Keeps the existing sign-in/sign-up screens as they are. Confirmation links depend on deep-linking, which is fragile on mobile. |
-| First migration | Core 8 tables | Exactly `ARCHITECTURE.md`'s v1 model, matching `src/types`, so generated types diff cleanly. Reporting and blocking wait for someone to own the queue. |
+| First migration | Core 8 tables | Exactly `ARCHITECTURE.md`'s v1 model, matching `src/types`, so generated types diff cleanly. Reporting and blocking wait for someone to own the queue. **Superseded 2026-10-03 — see below.** |
 | Enum representation | Native Postgres enums | `supabase gen types` emits a union for an enum and a bare `string` for `text` + CHECK. See *Choices worth defending*. |
 | Migration style | Versioned migrations, not declarative schemas | Declarative `db diff` compares against files, not the live database, so Studio changes vanish silently. |
+
+### Settled 2026-10-03, rebuilding the schema
+
+From the *VIU Marketplace — ER & Use Cases Overview (v1)* requirements document.
+This replaced the eight-table design wholesale rather than extending it.
+
+| Decision | Chosen | Because |
+| --- | --- | --- |
+| Scope | 17 tables, not 8 | The requirements document put orders, follows, blocks, tags, meetup spots, devices and reports in v1. Four of those were on this roadmap's own out-of-scope list; that list is now corrected below. |
+| Identity | Pseudonymous — `username`, no `display_name` | A VIU address is `PreferredName.LastName@my.viu.ca`, and `profiles` is readable by every signed-in user. Any name on it, typed or derived, publishes the campus directory. The username is randomly generated at signup. |
+| Reviews | Hang off `orders`, not `listings` | A review now requires a transaction both parties confirmed, rather than a conversation about a listing someone later marked sold. That is the difference between a trust system and a comment box. |
+| Payments | Recorded, never processed | Each listing accepts cash, e-Transfer or both. No money moves through the app; Stripe stays deferred, and the v2 migration is still additive. |
+| Order writes | Server functions only | Accepting an order changes four things at once. A client doing that in four `PATCH`es can be interrupted between any two, and the failure mode is an item sold twice. |
+| `profiles` access | Column grants, not just RLS | One row carries public, owner-only and server-written data. RLS is row-level and cannot separate columns, so `select *` is denied and clients read `public_profiles` / `my_profile`. |
+| Reference data | A migration, not the seed | Categories and meetup spots are read-only to clients, so a database without them has a Post Listing screen that cannot submit. The seed never runs on hosted. |
+| Migration history | Baseline rewritten once, forward-only after | The eight-table migrations were edited in place and the hosted project reset — safe because it held zero rows. Every change since is a new timestamped migration. Do not rewrite an applied migration again. |
 
 ### Still open
 
@@ -306,16 +327,22 @@ a plain `.env` would be committed — add `.env` to it in this phase. The
 
 ## Phase 3 — Schema migrations
 
-One migration per concern, so a failure is legible:
+One migration per concern, so a failure is legible. **Rebuilt 2026-10-03** — the
+table below is the current set; `schema.md` carries the same map with more
+detail.
 
 | Migration | Contains |
 | --- | --- |
-| `..._enums_and_tables.sql` | `listing_condition`, `listing_status`, the eight tables, all constraints |
-| `..._indexes.sql` | Feed, inbox, and search indexes |
-| `..._triggers.sql` | The seven triggers |
-| `..._rls.sql` | `enable row level security` on all eight + every policy |
-| `..._views.sql` | `listing_summaries` with `security_invoker = on` |
+| `..._enums_and_tables.sql` | 8 enums, 17 tables, every constraint |
+| `..._indexes.sql` | 47 indexes, including two partial UNIQUE indexes that are correctness, not speed |
+| `..._triggers.sql` | 16 triggers and their functions |
+| `..._rls.sql` | RLS on all 16 public tables, 31 policies, **column grants** on `profiles` |
+| `..._views.sql` | `public_profiles`, `my_profile`, `listing_summaries` |
 | `..._storage.sql` | `listing-images` and `avatars` buckets + object policies |
+| `..._auth_viu_gate.sql` | `before_user_created_viu_gate` |
+| `20261003090000_orders_and_functions.sql` | The order state machine and the other server-only writes |
+| `20261003090100_reference_data.sql` | 11 categories, 7 meetup spots |
+| `20261004090000_function_grants.sql` | Locks down function `EXECUTE`; moves the block check off a policy |
 
 **Indexes:** `listings(status, created_at desc)` for the feed, `listings(seller_id)`,
 `listings(category_id)`, `listing_images(listing_id, position)`,
@@ -455,14 +482,27 @@ Per `.claude/rules/workflow.md`'s definition of done, at each phase:
 
 ## Explicitly out of scope
 
-- **`reports` and `blocked_users`** — deferred until a named person reads the queue.
-  `ARCHITECTURE.md` and `design-rules.md` both warn that a report button leading
-  nowhere is worse than none.
-- **`is_negotiable` and a JSONB attribute bag** — `design-rules.md` currently says
-  category detail "lives in the description". Changing that is a design-rule change,
-  not a schema change, and should be decided on its own.
-- **Everything Stripe.** The compatibility contract holds: no `transactions` table,
-  no `is_paid` column, no `checkout` route, no money in v1 naming.
-- **Auto-expiry, saved searches, structured offers, multi-dimensional seller
-  ratings** — over-built at this scale by comparison with Craigslist and Kijiji,
-  neither of which ships them.
+**Revised 2026-10-03.** Four items below were reversed by the requirements
+document and are now built. They are kept here, struck through, because a
+reversal that leaves no trace reads as though the original reasoning was never
+made — and in one case the original reasoning still stands.
+
+- ~~**`reports` and `blocked_users`**~~ — **built.** `blocks` works end to end.
+  `private.reports` exists and accepts writes through `submit_report()`, but
+  **the original objection was never answered: nobody reads the queue.** The
+  table is service-role only and there is no moderator role. The Report button
+  must not ship until a person is named for it.
+- ~~**`is_negotiable`**~~ — **built**, as a boolean on `listings`. The JSONB
+  attribute bag is still out: `design-rules.md` says category detail lives in the
+  description, and structured per-category attributes remain a considered future
+  change rather than a v1 one.
+- ~~**Auto-expiry**~~ — **built.** `expires_at`, `bumped_at`, `renew_listing()`
+  and a scheduled sweep. The Craigslist comparison was wrong for a campus: terms
+  end and students leave, so a feed with no expiry fills with items sold in April.
+- **Everything Stripe.** Unchanged, and the compatibility contract holds: no
+  `transactions` table, no `is_paid` column, no `checkout` route, no money in v1
+  naming. `orders` records what two people agreed to settle in person; v2 adds
+  columns to it rather than replacing it.
+- **Saved searches, structured offers, multi-dimensional seller ratings.**
+  Unchanged — still over-built at this scale. The requirements document agrees:
+  all three are on its own deferred list, with the shape they would take.

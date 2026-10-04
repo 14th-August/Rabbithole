@@ -128,9 +128,17 @@ Signing up with any other address is fine as long as it ends in `@my.viu.ca`. An
 | API gateway | http://localhost:54321 | What the app talks to |
 | Postgres | `postgresql://postgres:postgres@localhost:54322/postgres` | Direct SQL |
 | Studio | http://localhost:54323 | Browse tables, run queries |
-| Mailpit | http://localhost:54324 | **Read confirmation emails** — no mail leaves the machine |
+| Mailpit | http://localhost:54324 | Catches auth email — **only while `[auth.email.smtp]` is disabled** |
 
-Signup sends a 6-digit code rather than a link, so confirming a new account locally means opening Mailpit and reading the code out of the email.
+Signup sends a 6-digit code rather than a link, so confirming a new account means reading six digits out of the email.
+
+> [!IMPORTANT]
+> **Mail now leaves the machine.** `[auth.email.smtp]` in `supabase/config.toml` is
+> enabled and relays through Resend, so Mailpit no longer receives auth email — it
+> goes to a real inbox. Until a domain is verified at resend.com/domains, Resend
+> will deliver **only** to `casey.adams@my.viu.ca`; every other recipient is refused
+> with a 403 before the message moves, which looks like a broken app rather than a
+> quota rule. Set `enabled = false` and restart to go back to catching mail locally.
 
 > [!NOTE]
 > **Editing `supabase/templates/confirmation.html` requires restarting Auth.** GoTrue

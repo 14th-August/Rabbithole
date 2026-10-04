@@ -1,9 +1,19 @@
 # Rabbithole schema
 
-The v1 database. Eight tables, one view, six triggers, one RPC.
+The v1 database. **Seventeen tables, three views, eight enums, sixteen triggers,
+thirty-one RLS policies, forty-seven indexes.**
 
-This document is the transcription source for `supabase/migrations/` — Phase 3 is
-copying, not inventing. Companion to [`roadmap.md`](roadmap.md).
+Rebuilt 2026-10-03 from the *VIU Marketplace — ER & Use Cases Overview (v1)*
+requirements document, replacing the eight-table design of 2026-09-18.
+
+**This document is no longer the transcription source.** It was, when the schema
+was eight tables being copied into migrations for the first time. The migrations
+are now the source of truth: they carry the column-level reasoning inline, and a
+second copy of it here would be a second copy to forget to update. What lives
+here instead is the map, the decisions, and the things no single migration file
+can say.
+
+Companion to [`roadmap.md`](roadmap.md) and [`auth-flow.md`](auth-flow.md).
 
 ## Conventions inherited from the codebase
 
@@ -18,730 +28,256 @@ is that the hand-written types and the database agree without a translation laye
 | Timestamps are ISO 8601 strings | `timestamptz`. PostgREST serialises it as a string; nothing parses to `Date` at the model boundary. |
 | Nullable carries meaning | `rating_avg null` is "no reviews", not zero. `primary_image null` is a real listing. |
 | Closed sets are unions | Native Postgres enums, so `supabase gen types` emits the union. |
+| Plural tables, `<role>_id` keys | `follows.follower_id`, `orders.buyer_id`. |
 
----
+## Where everything is defined
+
+| Migration | Holds |
+| --- | --- |
+| `20260918132138_enums_and_tables.sql` | 8 enums, 17 tables, every constraint |
+| `20260918132144_indexes.sql` | 47 indexes, including two partial UNIQUE indexes that are correctness rather than speed |
+| `20260918132150_triggers.sql` | 16 triggers and the functions behind them |
+| `20260918132157_rls.sql` | RLS on all 16 public tables, 31 policies, and the **column grants** on `profiles` |
+| `20260918132203_views.sql` | `public_profiles`, `my_profile`, `listing_summaries` |
+| `20260918132209_storage.sql` | `listing-images` and `avatars` buckets + object policies |
+| `20260918132214_auth_viu_gate.sql` | `before_user_created_viu_gate` — layer 2 of the VIU gate |
+| `20261003090000_orders_and_functions.sql` | The order state machine and the other server-only writes |
+| `20261003090100_reference_data.sql` | The 11 categories and 7 meetup spots. A migration, not a seed, because a hosted database needs them |
+| `20261004090000_function_grants.sql` | Locks down function `EXECUTE`; moves the block check off a policy |
+
+Development fixtures live in `supabase/seed.sql` and run on `db reset` only.
+Negative authorization checks live in `supabase/checks/rls.sql`.
 
 ## Entity relationships
 
+Relationships only. Columns are in the tables migration, where they sit beside
+the reason they exist.
+
 ```mermaid
 erDiagram
-    profiles ||--o{ listings : sells
-    profiles ||--o{ saved_listings : saves
-    profiles ||--o{ messages : writes
-    profiles ||--o{ reviews : "writes / receives"
-    categories ||--o{ listings : classifies
-    categories ||--o{ categories : "parent of"
-    listings ||--o{ listing_images : has
-    listings ||--o{ saved_listings : "saved in"
-    listings ||--o{ conversations : "discussed in"
-    listings ||--o{ reviews : "reviewed via"
+    profiles  ||--o{ listings       : sells
+    profiles  ||--o{ follows        : follows
+    profiles  ||--o{ blocks         : blocks
+    profiles  ||--o{ user_devices   : registers
+    profiles  ||--o{ saved_listings : saves
+    profiles  ||--o{ orders         : "buys and sells"
+    profiles  ||--o{ reviews        : "writes and receives"
+    profiles  ||--o{ messages       : writes
+
+    categories |o--o{ categories          : "parent of"
+    categories ||--o{ listings            : classifies
+    categories ||--o{ listing_categories  : "also classifies"
+    tags       ||--o{ listing_tags        : labels
+
+    listings ||--o{ listing_images     : shows
+    listings ||--o{ listing_categories : "has secondary"
+    listings ||--o{ listing_tags       : "has tags"
+    listings ||--o{ saved_listings     : "is saved in"
+    listings ||--o{ conversations      : "is discussed in"
+    listings ||--o{ orders             : "is bought in"
+
+    meetup_spots |o--o{ listings : "default for"
+    meetup_spots |o--o{ orders   : "handover at"
+
+    orders        ||--o{ reviews  : unlocks
     conversations ||--o{ messages : contains
 
-    profiles {
-        uuid id PK "= auth.users.id"
-        text display_name
-        text avatar_path "nullable"
-        timestamptz viu_verified_at "nullable"
-        numeric rating_avg "nullable = no reviews"
-        int rating_count
-        timestamptz created_at
-    }
-    categories {
-        uuid id PK
-        uuid parent_id FK "null = top level"
-        text slug UK
-        text name
-        int position
-    }
-    listings {
-        uuid id PK
-        uuid seller_id FK
-        uuid category_id FK
-        text title
-        text description
-        int price_cents "CAD, 0 = free"
-        enum condition "listing_condition"
-        enum status "listing_status"
-        text pickup_hint "nullable"
-        timestamptz created_at
-        timestamptz updated_at
-        timestamptz sold_at "nullable"
-    }
-    listing_images {
-        uuid id PK
-        uuid listing_id FK
-        text storage_path
-        int position "0 = cover"
-    }
-    saved_listings {
-        uuid user_id PK,FK
-        uuid listing_id PK,FK
-        timestamptz created_at
-    }
-    conversations {
-        uuid id PK
-        uuid listing_id FK
-        uuid buyer_id FK
-        uuid seller_id FK "denormalised"
-        timestamptz last_message_at
-        timestamptz created_at
-    }
-    messages {
-        uuid id PK
-        uuid conversation_id FK
-        uuid sender_id FK
-        text body
-        timestamptz created_at
-        timestamptz read_at "nullable"
-    }
-    reviews {
-        uuid id PK
-        uuid listing_id FK
-        uuid reviewer_id FK
-        uuid reviewee_id FK
-        int rating "1..5"
-        text body "nullable"
-        timestamptz created_at
-    }
+    profiles ||--o{ reports : files
 ```
 
----
+`private.reports` is omitted above on purpose — it points at profiles, listings
+and messages, but it is not in the API's exposed schemas and no client can reach
+it at all.
+
+## The three data tiers
+
+The single most important thing in this schema, and the one a reader is most
+likely to get wrong.
+
+| Tier | Who can read | Where |
+| --- | --- | --- |
+| **Public** | any signed-in user | username, bio, campus, avatar, ratings, completed sales, response time, last active *if shown*, reviews, live listings |
+| **Owner-only** | the user and the server | saved listings, follows, orders, conversations, notification preferences |
+| **Server-only** | Edge Functions and the service role | VIU email (`auth.users`), push tokens, reports and reporter identity |
+
+**RLS cannot express the first two on `profiles`, because RLS is row-level.**
+One `profiles` row carries public trust signals, owner-only preferences, and
+server-written counters side by side. Column grants do that separation, so
+`20260918132157_rls.sql` revokes the table grant and re-grants specific columns:
+
+- `select *` on `profiles` is **denied outright**. Clients read `public_profiles`
+  or `my_profile`.
+- `rating_sum`, `rating_count`, `completed_sales`, `response_rate`,
+  `median_response_minutes`, `status` and `viu_verified_at` are not grantable for
+  update. Without that, a seller raises their own rating with one `PATCH` and the
+  trust system is decorative.
 
 ## Enums
 
-```sql
-create type public.listing_condition as enum ('new', 'like_new', 'good', 'fair', 'poor');
-create type public.listing_status    as enum ('draft', 'active', 'reserved', 'sold', 'removed');
+| Enum | Members |
+| --- | --- |
+| `campus` | `nanaimo`, `cowichan`, `powell_river`, `parksville_qualicum` — **unverified against VIU's real locations** |
+| `listing_condition` | `new`, `like_new`, `good`, `fair`, `poor` — best-to-worst, which becomes the sort order |
+| `listing_status` | `draft`, `active`, `reserved`, `sold`, `removed`, `expired` |
+| `order_status` | `requested`, `accepted`, `completed`, `declined`, `cancelled`, `expired` |
+| `payment_method` | `cash`, `etransfer` |
+| `account_status` | `active`, `suspended`, `banned`, `deleted` |
+| `report_reason` | `prohibited_item`, `academic_dishonesty`, `scam_or_fraud`, `counterfeit`, `harassment`, `spam`, `other` — **proposed, not transcribed** |
+| `report_status` | `open`, `reviewing`, `actioned`, `dismissed` |
+
+## The order lifecycle
+
+No money moves through the app. The order row is what makes a sale a fact rather
+than a claim, and a **completed** order is the only thing that unlocks a review
+or increments `completed_sales`.
+
+```mermaid
+stateDiagram-v2
+  [*] --> requested : buyer requests, picks cash or e-Transfer
+  requested --> accepted  : seller accepts, proposes a meetup
+  requested --> declined  : seller declines, or another request is accepted
+  requested --> cancelled : buyer cancels
+  accepted  --> completed : both sides confirm the handoff
+  accepted  --> cancelled : either side cancels
+  accepted  --> expired   : not completed in time (scheduled sweep)
+  completed --> [*]
+  declined  --> [*]
+  cancelled --> [*]
+  expired   --> [*]
 ```
 
-Member order matters: it becomes the sort order if anything ever orders by the
-column, and `condition` is deliberately best-to-worst.
-
-`ALTER TYPE ... ADD VALUE` cannot be used in the same migration that then uses the
-new value, so any future addition is a two-migration change. The v1/v2 compatibility
-contract promises no new members, so this should never come up.
-
----
-
-## `profiles`
-
-The public identity. Readable by every signed-in user, because every feed card
-joins a seller preview.
-
-```sql
-create table public.profiles (
-  id            uuid primary key references auth.users (id) on delete cascade,
-  display_name  text not null check (char_length(display_name) between 1 and 60),
-  avatar_path   text,
-  viu_verified_at timestamptz,
-  rating_avg    numeric(2,1) check (rating_avg between 1.0 and 5.0),
-  rating_count  integer not null default 0 check (rating_count >= 0),
-  created_at    timestamptz not null default now()
-);
-```
-
-- **No `email` column, on purpose.** It lives in `auth.users`. Exposing it here
-  would turn a public table into a scraped mailing list — the reason is already
-  written into `src/types/profile.ts`.
-- **`viu_verified_at` is a timestamp, not a boolean.** VIU addresses die at
-  graduation, so "how stale is this verification" is a question that will be asked.
-  A boolean cannot answer it.
-- **`rating_avg` is nullable and denormalised.** `null` means no reviews yet.
-  Maintained by trigger, because sorting a feed on a correlated subquery needs an
-  index nobody has.
-
----
-
-## No student number — and why
-
-Dropped on 2026-09-18, after being designed. **A verified `@my.viu.ca` address
-already proves VIU membership**, which is the only thing the number was going to be
-used for. Everything else it offered was theatre:
-
-- It could not be **verified** against VIU's records without an integration nobody
-  has, so it would have been a self-asserted claim rendered next to a real one.
-- It was **PII with no upside** — it cannot live on `profiles` (publicly readable,
-  every feed card joins a seller preview), so it needed a whole second table, its
-  own RLS posture, and a standing rule that nothing may render it as verified.
-
-That is a table, a policy, a constraint, a form field, and a permanent caveat, in
-exchange for nothing the email does not already do.
-
-**If it is ever genuinely needed** — say VIU offers a verification endpoint — it
-comes back as its own table keyed to `auth.users`, owner-only SELECT and no UPDATE
-policy, never as a column on `profiles`. That reasoning is the part worth keeping.
-
----
-
-## `categories`
-
-```sql
-create table public.categories (
-  id        uuid primary key default gen_random_uuid(),
-  parent_id uuid references public.categories (id) on delete restrict,
-  slug      text not null unique check (slug ~ '^[a-z0-9-]+$'),
-  name      text not null,
-  position  integer not null default 0,
-  constraint categories_not_own_parent check (id is distinct from parent_id)
-);
-```
-
-- **`slug` is the stable identifier.** Safe to hardcode in client code; `name` is
-  not, because it is display copy and will be reworded.
-- **`on delete restrict`**, not cascade — deleting "Textbooks" must not silently
-  take five subject categories and every listing under them.
-- **Two levels are enforced by trigger.** A CHECK constraint cannot run the subquery
-  that asks whether the parent itself has a parent.
-- **`position` orders the Discover category bar.** Without it the order is whatever
-  the planner returns, which puts Course Supplies wherever it likes.
-
----
-
-## `listings`
-
-```sql
-create table public.listings (
-  id          uuid primary key default gen_random_uuid(),
-  seller_id   uuid not null references public.profiles (id) on delete cascade,
-  category_id uuid not null references public.categories (id) on delete restrict,
-  title       text not null check (char_length(title) between 1 and 200),
-  description text not null default '',
-  price_cents integer not null check (price_cents >= 0),
-  condition   public.listing_condition not null,
-  status      public.listing_status not null default 'draft',
-  pickup_hint text check (pickup_hint is null or char_length(pickup_hint) <= 200),
-  created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now(),
-  sold_at     timestamptz,
-  constraint listings_sold_has_timestamp
-    check (status <> 'sold' or sold_at is not null)
-);
-```
-
-- **`title` allows 200 characters.** eBay caps at 80 and Facebook at 100, but the
-  nursing-bundle fixture in `src/mocks` is ~151 characters and exists specifically
-  to break naive layouts. A tighter cap would reject a fixture the mocks README
-  forbids tidying. Cards truncate at two lines with `numberOfLines`.
-- **`description` is `not null default ''`.** The draft fixture has an empty
-  description; that is a real state, and an empty string models it better than
-  `null` because the UI never has to branch.
-- **`price_cents >= 0`, and `0` is legal.** Free items are a real and common case.
-  Rendering `0` as "$0.00" instead of "Free" is a design-rule violation.
-- **`sold_at` is constrained one-directionally.** Sold implies a timestamp; a
-  timestamp does not imply sold, so a listing that goes `sold → removed` keeps its
-  history rather than tripping a constraint.
-
----
-
-## `listing_images`
-
-```sql
-create table public.listing_images (
-  id           uuid primary key default gen_random_uuid(),
-  listing_id   uuid not null references public.listings (id) on delete cascade,
-  storage_path text not null,
-  position     integer not null check (position >= 0),
-  constraint listing_images_position_unique
-    unique (listing_id, position) deferrable initially deferred
-);
-```
-
-- **The uniqueness constraint is deferrable.** Reordering photos swaps two positions
-  inside one transaction; a non-deferrable constraint fails halfway through the swap.
-- **`storage_path` is an object path, not a URL.** Resolution to a URL is a
-  `src/lib/storage.ts` helper. Paths start with the owner's uuid — see *Storage*.
-- **Position 0 is the cover image.** A listing with no rows here is legitimate and
-  common for cheap items; the UI renders a `surfaceSunken` placeholder rather than
-  hiding the card.
-
----
-
-## `saved_listings`
-
-```sql
-create table public.saved_listings (
-  user_id    uuid not null references public.profiles (id) on delete cascade,
-  listing_id uuid not null references public.listings (id) on delete cascade,
-  created_at timestamptz not null default now(),
-  primary key (user_id, listing_id)
-);
-```
-
-The composite primary key makes saving idempotent — tapping the bookmark twice is
-an upsert, not a duplicate. This table has no hand-written type in `src/types` yet;
-Phase 3 adds `SavedListing`.
-
----
-
-## `conversations`
-
-```sql
-create table public.conversations (
-  id              uuid primary key default gen_random_uuid(),
-  listing_id      uuid not null references public.listings (id) on delete cascade,
-  buyer_id        uuid not null references public.profiles (id) on delete cascade,
-  seller_id       uuid not null references public.profiles (id) on delete cascade,
-  last_message_at timestamptz not null default now(),
-  created_at      timestamptz not null default now(),
-  constraint conversations_one_thread_per_buyer unique (listing_id, buyer_id),
-  constraint conversations_not_self check (buyer_id <> seller_id)
-);
-```
-
-- **`unique (listing_id, buyer_id)`** is what makes "Message seller" idempotent.
-  Tapping it repeatedly reopens the same thread instead of spawning duplicates.
-- **`seller_id` is denormalised from the listing** so the inbox does not join to
-  `listings` just to find the other party.
-- **A conversation is always about a listing.** There is no general DM surface,
-  which keeps moderation tractable — the reasoning is already in
-  `src/types/messaging.ts`.
-
----
-
-## `messages`
-
-```sql
-create table public.messages (
-  id              uuid primary key default gen_random_uuid(),
-  conversation_id uuid not null references public.conversations (id) on delete cascade,
-  sender_id       uuid not null references public.profiles (id) on delete cascade,
-  body            text not null check (char_length(body) between 1 and 2000),
-  created_at      timestamptz not null default now(),
-  read_at         timestamptz
-);
-```
-
-`read_at` is only meaningful to the non-sender. It is written through the
-`mark_conversation_read` RPC rather than a client UPDATE — see *Functions*.
-
----
-
-## `reviews`
-
-```sql
-create table public.reviews (
-  id          uuid primary key default gen_random_uuid(),
-  listing_id  uuid not null references public.listings (id) on delete cascade,
-  reviewer_id uuid not null references public.profiles (id) on delete cascade,
-  reviewee_id uuid not null references public.profiles (id) on delete cascade,
-  rating      integer not null check (rating between 1 and 5),
-  body        text check (body is null or char_length(body) <= 1000),
-  created_at  timestamptz not null default now(),
-  constraint reviews_one_per_reviewer_per_listing unique (listing_id, reviewer_id),
-  constraint reviews_not_self check (reviewer_id <> reviewee_id)
-);
-```
-
-- **Reviews hang off a listing, not a user pair.** Selling someone two textbooks
-  yields two reviewable events rather than one overwritten opinion.
-- **`rating` is `integer` with a CHECK, not an enum.** The types file explains why
-  it is typed `number` rather than `1|2|3|4|5` in TypeScript: PostgREST returns a
-  plain number, and a literal union would force a cast on every read.
-- **Bidirectional by construction.** Buyer-rates-seller and seller-rates-buyer are
-  the same table with the roles reversed. A no-show buyer is as real a problem on a
-  campus as a bad seller.
-
----
-
-## Indexes
-
-```sql
-create index listings_feed_idx        on public.listings (status, created_at desc);
-create index listings_seller_idx      on public.listings (seller_id, created_at desc);
-create index listings_category_idx    on public.listings (category_id) where status = 'active';
-create index listing_images_order_idx on public.listing_images (listing_id, position);
-create index saved_listings_user_idx  on public.saved_listings (user_id, created_at desc);
-create index conversations_buyer_idx  on public.conversations (buyer_id, last_message_at desc);
-create index conversations_seller_idx on public.conversations (seller_id, last_message_at desc);
-create index messages_thread_idx      on public.messages (conversation_id, created_at);
-create index reviews_reviewee_idx     on public.reviews (reviewee_id);
-
--- Search is a first-class affordance per design-rules.md, not a filter.
-create index listings_search_idx on public.listings
-  using gin (to_tsvector('english', title || ' ' || description));
-```
-
-The inbox needs both `conversations` indexes because the same user is a buyer in
-some threads and a seller in others, and the inbox is one list.
-
----
-
-## Triggers
-
-Seven. All the ones that touch `auth` or write across a row boundary are
-`security definer set search_path = ''` — the empty search path is the hardening
-that prevents search-path hijacking inside the definer context, and it means every
-identifier inside must be schema-qualified.
-
-| Trigger | On | Does |
+| Order status | Listing status | Side effects |
 | --- | --- | --- |
-| `handle_new_user` | `auth.users` insert | Re-checks the VIU domain, then creates the `profiles` row |
-| `handle_email_confirmed` | `auth.users` update of `email_confirmed_at` | Stamps `profiles.viu_verified_at` |
-| `refresh_profile_rating` | `reviews` insert/update/delete | Recomputes `rating_avg` and `rating_count` |
-| `touch_conversation` | `messages` insert | Advances `conversations.last_message_at` |
-| `touch_listing` | `listings` update | Sets `updated_at`, and `sold_at` on the transition into `sold` |
-| `enforce_category_depth` | `categories` insert/update | Raises if a category would nest three levels deep |
+| `requested` | `active` | Several requests can be pending at once |
+| `accepted` | `reserved` | Every other pending request is auto-declined in the same transaction |
+| `completed` | `sold`, `sold_at` set | `completed_sales` +1 for the seller; both sides may leave one review |
+| `declined` / `cancelled` / `expired` | back to `active` | Nothing else changes |
 
-### `handle_new_user` — the third layer of the VIU gate
+**Every transition runs inside one server function.** A client doing this in four
+`PATCH`es can be interrupted between any two of them, and the failure mode is an
+item sold twice. `orders` has no INSERT, UPDATE or DELETE grant at all.
 
-```sql
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  -- display_name is cosmetic, so taking it from user-controlled metadata is fine.
-  -- Nothing is authorised on it. Falls back to the email local part, which for
-  -- VIU is already "Preferred.Lastname".
-  claimed_name text := coalesce(
-    nullif(trim(new.raw_user_meta_data ->> 'display_name'), ''),
-    replace(split_part(new.email, '@', 1), '.', ' ')
-  );
-begin
-  -- The Before User Created hook is dashboard configuration and can be switched
-  -- off without a commit. This check lives in a migration, so it cannot.
-  if new.email !~* '@my\.viu\.ca$' then
-    raise exception 'Rabbithole accounts require a @my.viu.ca address'
-      using errcode = 'check_violation';
-  end if;
+Two partial UNIQUE indexes make it safe under concurrency:
+`orders_one_live_per_listing_idx` means at most one accepted-or-completed order
+per listing even when two accepts race, and `orders_one_open_request_per_buyer_idx`
+stops a buyer queuing forty requests on one item.
 
-  insert into public.profiles (id, display_name)
-  values (new.id, claimed_name);
+## Trust signals and who writes them
 
-  return new;
-end;
-$$;
+Every one is server-written. None is client-writable.
 
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute function public.handle_new_user();
-```
+| Column | Maintained by | Note |
+| --- | --- | --- |
+| `rating_sum`, `rating_count` | `refresh_profile_rating` on review write | Sum and count, not an average, so adding a review is a two-integer increment that cannot drift |
+| `rating_avg` | **generated column** over the two above | `null` when `rating_count = 0`. Renders "New seller", never "0.0 stars" |
+| `completed_sales` | `confirm_handoff` on the second confirmation | |
+| `response_rate`, `median_response_minutes` | `refresh_response_metrics` on a sender's first message in a thread | `null` means not enough conversations to say, which is not 0% |
+| `viu_verified_at` | `handle_email_confirmed` | A timestamp, not a boolean: VIU addresses expire at graduation |
 
-### `refresh_profile_rating`
+`refresh_response_metrics` fires on the **buyer's** first message as well as the
+seller's. Without that, a seller who never replies is never recalculated and
+keeps a `null` rate forever — the one behaviour the metric exists to expose.
 
-```sql
-create or replace function public.refresh_profile_rating()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  target uuid := coalesce(new.reviewee_id, old.reviewee_id);
-begin
-  update public.profiles p
-     set rating_avg   = agg.avg_rating,
-         rating_count = agg.n
-    from (
-      select round(avg(r.rating)::numeric, 1) as avg_rating,
-             count(*)::integer                as n
-        from public.reviews r
-       where r.reviewee_id = target
-    ) agg
-   where p.id = target;
+## Row-level security posture
 
-  return null;
-end;
-$$;
-```
+Every table has RLS enabled and default-deny. Conventions applied without
+exception:
 
-When the last review is deleted, `avg()` returns `null` and `count()` returns `0` —
-which lands exactly on the "New seller" semantic the UI already handles. That is the
-behaviour, not an accident of it.
+- `(select auth.uid())`, never bare `auth.uid()` — the subselect is evaluated
+  once as an initPlan rather than per row.
+- `to authenticated` on every policy, so nothing is evaluated at all for
+  anonymous requests.
+- Every policy that creates user-visible content also calls
+  `is_account_active()`. That is what makes `suspended` actually suspend
+  somebody rather than merely label them.
 
----
+**Block and closed-thread checks live in `SECURITY DEFINER` triggers, not in
+policies.** A policy expression is evaluated as the calling user, so a policy
+that calls a definer function requires that user to hold `EXECUTE` on it — and
+PostgREST publishes any non-trigger function as an RPC endpoint. That combination
+briefly turned `is_blocked_between()` into an oracle any signed-in user could ask
+"did X block Y", defeating the blocks policy outright. See
+`20261004090000_function_grants.sql`; `supabase/checks/rls.sql` §19–20 guards it.
 
-## Row-level security
+## Views
 
-Every table gets `enable row level security`. Every policy is scoped
-`to authenticated` and wraps `auth.uid()` in a subselect.
+| View | Security | Why |
+| --- | --- | --- |
+| `public_profiles` | **definer** | The only path to `last_active_at`, which column grants deny directly, and it applies the `show_last_active` rule on the way through |
+| `my_profile` | **definer** | Returns the caller's own row including preferences. Its `where id = auth.uid()` *is* the authorization |
+| `listing_summaries` | **`security_invoker = on`** | Load-bearing. Without it the view runs as its owner, bypasses the listings policy, and publishes every draft in the database |
 
-**Why `(select auth.uid())` rather than bare `auth.uid()`:** the subselect lets
-Postgres evaluate it once as an initPlan instead of re-running it per row. This is
-still current Supabase guidance and it is the difference between a feed query that
-scales and one that does not.
+## Client-callable functions
 
-**Why `to authenticated` rather than leaving it open:** the policy is not evaluated
-at all for anonymous requests, which is a cheaper rejection than filtering rows.
+Twelve, and no more — `20261004090000` revoked the default `PUBLIC` grant from
+everything else.
 
-```sql
--- profiles: public identity, owner-writable. No INSERT policy — the signup
--- trigger is the only writer, and it is SECURITY DEFINER.
-create policy "profiles readable by signed-in users"
-  on public.profiles for select to authenticated using (true);
+`request_order` · `accept_order` · `decline_order` · `confirm_meetup` ·
+`confirm_handoff` · `cancel_order` · `renew_listing` · `mark_conversation_read` ·
+`submit_report` · `register_device` · `delete_my_account` · `is_account_active`
 
-create policy "a user updates only their own profile"
-  on public.profiles for update to authenticated
-  using ((select auth.uid()) = id)
-  with check ((select auth.uid()) = id);
-
--- listings: drafts and removed listings are owner-only.
-create policy "live listings are visible; drafts are not"
-  on public.listings for select to authenticated
-  using (status in ('active', 'reserved', 'sold') or (select auth.uid()) = seller_id);
-
-create policy "a seller writes their own listings"
-  on public.listings for insert to authenticated
-  with check ((select auth.uid()) = seller_id);
-
-create policy "a seller edits their own listings"
-  on public.listings for update to authenticated
-  using ((select auth.uid()) = seller_id)
-  with check ((select auth.uid()) = seller_id);
-
--- listing_images: visibility follows the parent listing. The subquery is itself
--- filtered by the listings policy above, so a draft's images are owner-only for
--- free — no duplicated status logic.
-create policy "images follow their listing's visibility"
-  on public.listing_images for select to authenticated
-  using (exists (select 1 from public.listings l where l.id = listing_id));
-
-create policy "a seller manages their own listing's images"
-  on public.listing_images for all to authenticated
-  using (exists (
-    select 1 from public.listings l
-     where l.id = listing_id and l.seller_id = (select auth.uid())
-  ))
-  with check (exists (
-    select 1 from public.listings l
-     where l.id = listing_id and l.seller_id = (select auth.uid())
-  ));
-
--- saved_listings: entirely private to the saver.
-create policy "a user manages only their own saves"
-  on public.saved_listings for all to authenticated
-  using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
-
--- conversations: participants only. A buyer may open a thread on someone else's
--- live listing, and on nobody's draft.
-create policy "participants read their conversations"
-  on public.conversations for select to authenticated
-  using ((select auth.uid()) in (buyer_id, seller_id));
-
-create policy "a buyer opens a thread on a live listing"
-  on public.conversations for insert to authenticated
-  with check (
-    (select auth.uid()) = buyer_id
-    and exists (
-      select 1 from public.listings l
-       where l.id = conversations.listing_id
-         and l.seller_id = conversations.seller_id
-         and l.seller_id <> (select auth.uid())
-         and l.status in ('active', 'reserved')
-    )
-  );
-
--- messages: readable and writable only inside a thread you are in. The
--- conversations policy does the participant check, so it is not repeated here.
--- No UPDATE policy — read_at goes through mark_conversation_read().
-create policy "participants read their messages"
-  on public.messages for select to authenticated
-  using (exists (select 1 from public.conversations c where c.id = conversation_id));
-
-create policy "a participant sends as themselves"
-  on public.messages for insert to authenticated
-  with check (
-    (select auth.uid()) = sender_id
-    and exists (select 1 from public.conversations c where c.id = conversation_id)
-  );
-
--- reviews: public trust signal, writable only after a completed trade.
-create policy "reviews readable by signed-in users"
-  on public.reviews for select to authenticated using (true);
-
-create policy "a participant reviews a sold listing"
-  on public.reviews for insert to authenticated
-  with check (
-    (select auth.uid()) = reviewer_id
-    and exists (
-      select 1 from public.listings l
-       where l.id = reviews.listing_id and l.status = 'sold'
-    )
-    and exists (
-      select 1 from public.conversations c
-       where c.listing_id = reviews.listing_id
-         and (select auth.uid()) in (c.buyer_id, c.seller_id)
-         and reviews.reviewee_id in (c.buyer_id, c.seller_id)
-    )
-  );
-
--- categories: read-only to clients. Seeded and administered, not user-generated.
-create policy "categories readable by signed-in users"
-  on public.categories for select to authenticated using (true);
-```
-
-**The review INSERT policy is the one worth re-reading.** Without the
-"held a conversation on a sold listing" condition, reviews are free-form reputation
-that anyone can write about anyone, which is the single cheapest way to make a
-trust system worthless.
-
----
-
-## The `listing_summaries` view
-
-`src/types/README.md` calls `ListingSummary` "a forward declaration of a Postgres
-view". This is that view.
-
-```sql
-create view public.listing_summaries with (security_invoker = on) as
-select
-  l.id, l.seller_id, l.category_id, l.title, l.description,
-  l.price_cents, l.condition, l.status, l.pickup_hint,
-  l.created_at, l.updated_at, l.sold_at,
-
-  jsonb_build_object(
-    'id',           p.id,
-    'display_name', p.display_name,
-    'avatar_path',  p.avatar_path,
-    'rating_avg',   p.rating_avg,
-    'rating_count', p.rating_count
-  ) as seller,
-
-  (
-    select jsonb_build_object(
-      'id', i.id, 'listing_id', i.listing_id,
-      'storage_path', i.storage_path, 'position', i.position
-    )
-      from public.listing_images i
-     where i.listing_id = l.id and i.position = 0
-  ) as primary_image,
-
-  (select count(*)::integer from public.listing_images i where i.listing_id = l.id)
-    as image_count,
-
-  exists (
-    select 1 from public.saved_listings s
-     where s.listing_id = l.id and s.user_id = (select auth.uid())
-  ) as is_saved
-
-from public.listings l
-join public.profiles p on p.id = l.seller_id;
-```
-
-- **`security_invoker = on` is mandatory here.** Without it the view runs as its
-  owner and bypasses the `listings` RLS policy entirely, which would publish every
-  draft in the database. This is the single most dangerous line in the schema to get
-  wrong.
-- **`primary_image` is `null` when there is no position-0 row**, which is exactly
-  what `ListingImage | null` means in the type.
-- **`is_saved` resolves per viewer** via `auth.uid()`, so this column cannot be
-  cached globally — the type already says so.
-
----
-
-## Functions
-
-### `mark_conversation_read`
-
-Marking a thread read means updating `read_at` on messages the caller did *not*
-send. That is an awkward RLS policy and a clean function.
-
-```sql
-create or replace function public.mark_conversation_read(p_conversation_id uuid)
-returns integer
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  affected integer;
-begin
-  -- SECURITY DEFINER bypasses RLS, so this membership check is not optional.
-  -- It is the only thing standing between this function and a full-table update.
-  if not exists (
-    select 1 from public.conversations c
-     where c.id = p_conversation_id
-       and (select auth.uid()) in (c.buyer_id, c.seller_id)
-  ) then
-    raise exception 'Not a participant in this conversation'
-      using errcode = 'insufficient_privilege';
-  end if;
-
-  update public.messages m
-     set read_at = now()
-   where m.conversation_id = p_conversation_id
-     and m.sender_id <> (select auth.uid())
-     and m.read_at is null;
-
-  get diagnostics affected = row_count;
-  return affected;
-end;
-$$;
-```
-
-Called as `supabase.rpc("mark_conversation_read", { p_conversation_id: id })`.
-
----
+`expire_stale_orders` and `expire_stale_listings` are **service-role only** —
+they ignore `auth.uid()` and operate on every qualifying row.
 
 ## Storage
 
-Two public buckets. Object paths **start with the owner's uuid**, because the
-standard Supabase policy matches `(storage.foldername(name))[1]` against it.
+Two public buckets, `listing-images` and `avatars`. Public read is deliberate:
+listing photos are advertisements, and signed URLs would add an expiry to manage
+and a round trip per card. Writes are strictly owner-only, enforced by matching
+`(storage.foldername(name))[1]` against `auth.uid()` — so the owner's uuid **must**
+be the first path segment, or write authorization silently breaks.
 
 ```
 listing-images/{user_id}/{listing_id}/{position}.jpg
 avatars/{user_id}/avatar.jpg
 ```
 
-```sql
-insert into storage.buckets (id, name, public)
-values ('listing-images', 'listing-images', true),
-       ('avatars',        'avatars',        true)
-on conflict (id) do nothing;
-
-create policy "listing images and avatars are publicly readable"
-  on storage.objects for select
-  using (bucket_id in ('listing-images', 'avatars'));
-
-create policy "a user writes only into their own folder"
-  on storage.objects for insert to authenticated
-  with check (
-    bucket_id in ('listing-images', 'avatars')
-    and (storage.foldername(name))[1] = (select auth.uid())::text
-  );
-
-create policy "a user updates only their own objects"
-  on storage.objects for update to authenticated
-  using (
-    bucket_id in ('listing-images', 'avatars')
-    and (storage.foldername(name))[1] = (select auth.uid())::text
-  );
-
-create policy "a user deletes only their own objects"
-  on storage.objects for delete to authenticated
-  using (
-    bucket_id in ('listing-images', 'avatars')
-    and (storage.foldername(name))[1] = (select auth.uid())::text
-  );
-```
-
-**Buckets are public-read on purpose.** Listing photos are advertisements; signed
-URLs would add latency and expiry handling to every card in the feed for no privacy
-gain. Write access is still owner-only.
-
-`src/mocks/listings.ts` currently generates `listings/{listingId}/{position}.jpg`
-with no user segment. That fixture is wrong about the schema rather than awkward on
-purpose, so Phase 3 updates it.
-
----
-
 ## SQL ↔ TypeScript mapping
 
-What `supabase gen types typescript` will emit, and what it must match.
+What `supabase gen types typescript` emits, and what it must match.
 
 | SQL | TypeScript | Note |
 | --- | --- | --- |
-| `uuid` | `string` | |
-| `text` | `string` | |
+| `uuid`, `text`, `citext` | `string` | |
 | `text` nullable | `string \| null` | The null is meaningful; see the types README |
-| `integer` | `number` | |
+| `integer`, `smallint` | `number` | |
 | `numeric(2,1)` | `number \| null` | PostgREST serialises numeric as a JSON number |
 | `timestamptz` | `string` | ISO 8601. Never converted to `Date` at the boundary |
-| `public.listing_status` | `"draft" \| "active" \| ...` | The reason for enums over `text` + CHECK |
-| `jsonb_build_object(...)` in the view | the composed object | Typed by hand; generation cannot infer the shape |
+| `public.listing_status` | `"draft" \| "active" \| …` | The reason for enums over `text` + CHECK |
+| `tsvector` | `unknown` | `search_vector` is generated and stored, so it **does** appear in generated types |
+| `jsonb_build_object(…)` in a view | the composed object | Typed by hand; generation cannot infer the shape |
 
-Three additions to `src/types` land with Phase 3, all additive:
-`Category.position`, `Listing.updated_at`, and a new `SavedListing` interface.
+Views report no `NOT NULL` information, so every `listing_summaries` column
+generates as `| null`. `toSummary()` in `src/lib/queries/listings.ts` carries that
+cast **once**, rather than `!` scattered across every screen.
+
+## Departures from the requirements doc
+
+Three, each marked `DEPARTURE` in the SQL beside its reason.
+
+1. **`draft` kept** in `listing_status`. The doc drops it; the Post Listing screen
+   needs a pre-publish state and a policy is written against it.
+2. **`sold_at` biconditional softened.** The doc's
+   `(status = 'sold') = (sold_at is not null)` forces a seller removing a sold
+   listing to erase `sold_at`, destroying the record a completed order points at.
+   Two constraints give the same intent while letting history survive removal.
+3. **`search_vector` is a stored generated column**, per the doc, reversing the
+   earlier expression-index choice. It is faster and weightable; the cost is that
+   it now appears in generated types.
+
+Plus one addition: four `notify_*` booleans on `profiles`. Use case 44 ("manage
+which notifications they receive") had nowhere to live — the ER diagram has no
+preferences table and `user_devices` holds tokens, not choices.
+
+## Known gaps
+
+- **The campus list is unverified** against VIU's real locations, and so are the
+  meetup spot names. Adding an enum member later is cheap; renaming one is not.
+- **`report_reason` members are proposed**, drawn from `design-rules.md`'s
+  prohibited list rather than from the requirements document.
+- **Nobody reads the moderation queue.** `private.reports` is service-role only.
+  `design-rules.md` says a Report button leading nowhere is worse than none, so
+  that button should not ship until a person is named.
+- **The requirements doc says `@viu.ca` or `@my.viu.ca`.** The gate allows
+  `@my.viu.ca` only, per the decision log in `roadmap.md`. The doc is the thing
+  that should change.

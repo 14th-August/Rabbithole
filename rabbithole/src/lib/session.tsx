@@ -16,7 +16,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-import type { Profile } from "@/types";
+import type { MyProfile } from "@/types";
 
 import { isSessionStale } from "./sessionAge";
 import { supabase } from "./supabase";
@@ -27,12 +27,12 @@ interface SessionState {
   session: Session | null;
 
   /**
-   * The signed-in user's `profiles` row.
+   * The signed-in user's own profile, read through the `my_profile` view.
    *
    * Can be `null` even when `session` is set — briefly while it loads, and for
    * the window between signup and email confirmation.
    */
-  profile: Profile | null;
+  profile: MyProfile | null;
 
   /**
    * `true` until the stored session has been read from disk.
@@ -77,7 +77,7 @@ export function useSession(): SessionState {
  */
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<MyProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -132,10 +132,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // one — a real ordering hazard when sign-out and sign-in happen quickly.
     let active = true;
 
+    // `my_profile`, not `profiles`. The table denies `select *` outright —
+    // column grants, not RLS — because it carries owner-only preferences and
+    // server-written counters on the same row as public trust signals, and
+    // row-level security has no way to separate columns. This view is the only
+    // way to read the preferences at all.
+    //
+    // No `.eq("id", userId)`: the view's own WHERE clause on auth.uid() is the
+    // authorization, and it can never return another user's row. A filter here
+    // would narrow nothing and imply the security lives in the client.
     supabase
-      .from("profiles")
+      .from("my_profile")
       .select("*")
-      .eq("id", userId)
       // maybeSingle, not single: between auth.users insert and the trigger's
       // profiles insert there is a window with no row, and that is not an error.
       .maybeSingle()
@@ -150,7 +158,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        setProfile(data as Profile | null);
+        setProfile(data as MyProfile | null);
       });
 
     return () => {

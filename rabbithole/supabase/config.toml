@@ -236,15 +236,36 @@ otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
-# Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# Real SMTP — sends to an actual inbox instead of the Mailpit catcher.
+#
+# With this block enabled, GoTrue stops handing auth mail to Mailpit on :54324
+# and relays it through Resend. Mailpit keeps running and its UI still works; it
+# simply stops receiving. To go back to catching mail locally, set enabled to
+# false and restart the stack — nothing else in the repo knows the difference.
+#
+# TWO LIMITS APPLY UNTIL A DOMAIN IS VERIFIED AT resend.com/domains:
+#   1. Mail can only be sent TO casey.adams@my.viu.ca, the address the Resend
+#      account is registered to. Any other recipient is refused with a 403 at
+#      Resend's API, before the message moves. Signing up as anyone else —
+#      including the maya.chen@my.viu.ca used as an example in the setup doc —
+#      will look like a broken app, not a quota rule.
+#   2. admin_email must stay onboarding@resend.dev, Resend's shared test sender.
+#      A from-address on an unverified domain is refused the same way.
+#
+# Verifying a domain lifts both at once. It is a prerequisite for real users,
+# not a scaling concern — see docs/backend/roadmap.md, Phase 0.
+#
+# Port 587 (STARTTLS), NOT the 465 in docs/backend/setup.md. GoTrue opens the
+# connection in plaintext and waits for a 220 greeting; 465 is implicit TLS and
+# sends none, so GoTrue hangs and the request 504s after 10s. Verified 2026-09-29.
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 587
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "onboarding@resend.dev"
+sender_name = "Rabbithole"
 
 # Uncomment to customize email template
 # Signup confirmation sends a 6-digit code, not a link. See the template file
