@@ -24,7 +24,8 @@ import type {
   TablesInsert,
 } from "@/types";
 
-import { fail, ok, requireRows, toMessage } from "./errors";
+import { fail, ok, requireRows, requireWrite, toMessage } from "./errors";
+import { viewRows } from "./rows";
 
 /** How many feed rows a page holds. */
 export const FEED_PAGE_SIZE = 20;
@@ -38,20 +39,9 @@ export const FEED_PAGE_SIZE = 20;
  */
 const FEED_STATUSES: ListingStatus[] = ["active", "reserved"];
 
-/**
- * Narrow a `listing_summaries` row to {@link ListingSummary}.
- *
- * Postgres exposes no `NOT NULL` information for views, so every generated column
- * comes back `| null` and the composed objects as bare `Json` — even though the
- * view selects them from non-null table columns and they are never actually null.
- *
- * The official fix is `MergeDeep` from `type-fest`, which is a new dependency and
- * not one to add quietly. Until that is decided, the cast lives **here, once**,
- * rather than as `!` scattered across every screen that reads a listing.
- */
-function toSummary(row: Record<string, unknown>): ListingSummary {
-  return row as unknown as ListingSummary;
-}
+// The `listing_summaries` rows come back with every column typed `| null` and
+// the composed objects as bare `Json`. `viewRows` is where that is narrowed and
+// why — see src/lib/queries/rows.ts.
 
 /**
  * The Discover feed: live listings, newest first.
@@ -80,7 +70,7 @@ export async function getFeed(
     .range(from, from + FEED_PAGE_SIZE - 1);
 
   if (error) return fail(toMessage(error));
-  return ok((data ?? []).map(toSummary));
+  return ok(viewRows<ListingSummary>(data));
 }
 
 /**
@@ -163,7 +153,7 @@ export async function getSavedListings(db: Db): Promise<AsyncResult<ListingSumma
     .order("created_at", { ascending: false });
 
   if (error) return fail(toMessage(error));
-  return ok((data ?? []).map(toSummary));
+  return ok(viewRows<ListingSummary>(data));
 }
 
 /** The signed-in user's own listings, drafts included, newest first. */
@@ -180,7 +170,7 @@ export async function getMyListings(
     .order("created_at", { ascending: false });
 
   if (error) return fail(toMessage(error));
-  return ok((data ?? []).map(toSummary));
+  return ok(viewRows<ListingSummary>(data));
 }
 
 /**
@@ -266,6 +256,5 @@ export async function unsaveListing(
     .select();
 
   if (error) return fail(toMessage(error));
-  if (data === null || data.length === 0) return fail("That listing wasn't saved.");
-  return ok(null);
+  return requireWrite(data, "That listing wasn't saved.");
 }

@@ -22,6 +22,19 @@ export interface Conversation {
   seller_id: string;
   /** Maintained by trigger on message insert. The inbox sorts on this. */
   last_message_at: string;
+
+  /**
+   * Set when the thread stops accepting messages, which today means exactly one
+   * thing: a block between the two parties. A completed sale deliberately does
+   * NOT close a thread — people need to talk afterwards about a missing part or
+   * a refund.
+   *
+   * The row survives either way, so the history stays readable; only new
+   * messages are refused, and the refusal is worded identically to every other
+   * unavailability so a blocked user cannot detect the block.
+   */
+  closed_at: string | null;
+
   created_at: string;
 }
 

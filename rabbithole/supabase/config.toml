@@ -238,10 +238,14 @@ otp_expiry = 3600
 
 # Real SMTP — sends to an actual inbox instead of the Mailpit catcher.
 #
-# With this block enabled, GoTrue stops handing auth mail to Mailpit on :54324
-# and relays it through Resend. Mailpit keeps running and its UI still works; it
-# simply stops receiving. To go back to catching mail locally, set enabled to
-# false and restart the stack — nothing else in the repo knows the difference.
+# OFF BY DEFAULT, deliberately. Local auth mail goes to Mailpit on :54324, where
+# every signup code is readable and nothing leaves the machine. Relaying real
+# email from a dev box is the thing you opt into, not the thing you forget to
+# opt out of — and with the recipient limit below, leaving it on makes a local
+# signup as anyone but one address look like a broken app.
+#
+# Set enabled to true and restart the stack to exercise the real path. Nothing
+# else in the repo knows the difference.
 #
 # TWO LIMITS APPLY UNTIL A DOMAIN IS VERIFIED AT resend.com/domains:
 #   1. Mail can only be sent TO casey.adams@my.viu.ca, the address the Resend
@@ -259,7 +263,7 @@ otp_expiry = 3600
 # connection in plaintext and waits for a 220 greeting; 465 is implicit TLS and
 # sends none, so GoTrue hangs and the request 504s after 10s. Verified 2026-09-29.
 [auth.email.smtp]
-enabled = true
+enabled = false
 host = "smtp.resend.com"
 port = 587
 user = "resend"

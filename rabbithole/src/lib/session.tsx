@@ -18,6 +18,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 import type { MyProfile } from "@/types";
 
+import { getMyProfile } from "./queries/profiles";
 import { isSessionStale } from "./sessionAge";
 import { supabase } from "./supabase";
 
@@ -132,34 +133,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // one — a real ordering hazard when sign-out and sign-in happen quickly.
     let active = true;
 
-    // `my_profile`, not `profiles`. The table denies `select *` outright —
-    // column grants, not RLS — because it carries owner-only preferences and
-    // server-written counters on the same row as public trust signals, and
-    // row-level security has no way to separate columns. This view is the only
-    // way to read the preferences at all.
+    // Through the query layer, not around it. This read used to live here
+    // inline, which made it the one database call in the app outside
+    // `src/lib/queries/` — and because it bypassed `toMessage`, a failure
+    // printed a raw PostgREST string and left `profile` null, indistinguishable
+    // from an account whose row does not exist yet.
     //
-    // No `.eq("id", userId)`: the view's own WHERE clause on auth.uid() is the
-    // authorization, and it can never return another user's row. A filter here
-    // would narrow nothing and imply the security lives in the client.
-    supabase
-      .from("my_profile")
-      .select("*")
-      // maybeSingle, not single: between auth.users insert and the trigger's
-      // profiles insert there is a window with no row, and that is not an error.
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!active) return;
+    // `getMyProfile` owns both of those now: why the read goes to a view rather
+    // than the table, and what a null actually means.
+    getMyProfile(supabase).then(({ data, error }) => {
+      if (!active) return;
 
-        if (error) {
-          // The session is still valid; only the profile failed to load. Screens
-          // render their own fallbacks rather than the app failing whole.
-          console.warn("Failed to load profile:", error.message);
-          setProfile(null);
-          return;
-        }
+      if (error !== null) {
+        // The session is still valid; only the profile failed to load. Screens
+        // render their own fallbacks rather than the app failing whole.
+        console.warn("Failed to load profile:", error);
+        setProfile(null);
+        return;
+      }
 
-        setProfile(data as MyProfile | null);
-      });
+      setProfile(data);
+    });
 
     return () => {
       active = false;

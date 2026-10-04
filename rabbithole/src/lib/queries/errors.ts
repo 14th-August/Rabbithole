@@ -27,7 +27,8 @@ const MESSAGES: Record<string, string> = {
   // only fires for INSERT and for UPDATE failing a WITH CHECK — see requireRows.
   "42501": "You don't have permission to do that.",
 
-  // unique_violation. Usually a duplicate save or a second review on one listing.
+  // unique_violation. Usually a duplicate save, a second review on one order, a
+  // username someone just claimed, or a second request on a listing.
   "23505": "That's already there.",
 
   // foreign_key_violation. The row it pointed at is gone.
@@ -97,4 +98,22 @@ export function ok<T>(data: T): AsyncResult<T> {
 export function requireRows<T>(rows: T[] | null, message: string): AsyncResult<T> {
   if (rows === null || rows.length === 0) return fail(message);
   return ok(rows[0]!);
+}
+
+/**
+ * {@link requireRows} for a write whose row the caller does not want.
+ *
+ * Same silent-failure guard, different return type. Unsaving a listing, leaving
+ * a conversation, deleting a photo — all need to know the write *happened*, and
+ * none has any use for the row that came back.
+ *
+ * Without this the caller hand-rolls the length check, because `requireRows`
+ * resolves to `AsyncResult<T>` and the call site wants `AsyncResult<null>`.
+ *
+ * @param rows What `.select()` returned from the write.
+ * @param message What to tell the user when nothing was written.
+ */
+export function requireWrite(rows: unknown[] | null, message: string): AsyncResult<null> {
+  if (rows === null || rows.length === 0) return fail(message);
+  return ok(null);
 }

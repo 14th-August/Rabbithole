@@ -21,6 +21,8 @@ export type {
   ListingImage,
   ListingStatus,
   ListingSummary,
+  MeetupSpot,
+  PaymentMethod,
   SavedListing,
 } from "./listing";
 
