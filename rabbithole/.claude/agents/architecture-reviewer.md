@@ -22,8 +22,9 @@ In priority order:
 3. **`ARCHITECTURE.md`** at the repo root — the v1/v2 plan and the compatibility
    contract. **Gitignored, so it is absent in a worktree.** If you cannot find it,
    say so rather than reviewing without it.
-4. **`src/types/README.md`** and `src/theme/README.md` — the reasoning behind the
-   two most load-bearing decisions in the codebase.
+4. **`src/README.md`** and `src/types/README.md` — the layering rule and the
+   hand-written-versus-generated split, the two most load-bearing decisions left
+   in the codebase.
 
 A rule with a stated reason is binding. If you think a rule is wrong, say so
 explicitly as a finding — do not quietly review as though it does not exist.
@@ -38,15 +39,16 @@ Ordered by how expensive they are to discover late:
 2. **Money or Stripe concepts leaking into v1.** A `transactions` table, an
    `is_paid` column, a `checkout` route. `ARCHITECTURE.md` commits v2 to costing
    exactly one additive `ALTER TABLE`; anything that widens that is a finding.
-3. **Hardcoded design values.** Any literal colour, spacing, radius, or font size
-   outside `src/theme` and `app.json`. Grep for it; do not rely on reading.
-4. **Layering violations.** `src/theme` importing from `app` or `components`.
-   A screen importing `lib/supabase` instead of going through `lib/queries`.
-   Anything importing
-   `src/theme/palette.ts` from outside the theme folder.
-5. **`ListingSummary` growth.** Every field on it is a join the feed pays for on
-   every scroll. Widening it is a performance decision and must be argued, not
-   absorbed.
+3. **Off-grid or off-palette style values.** Literals are the convention now, so
+   the finding is a value that is not in the `design-rules.md` table or not on
+   the 4pt grid — and especially a drift in the three load-bearing literals that
+   must match `app.json`.
+4. **Layering violations.** A screen importing `lib/supabase` for *data* instead
+   of going through `lib/queries`. Passing the client to an auth function is
+   fine and intended.
+5. **Scope creep past auth.** The project was scaled back to working
+   authentication on purpose. A new screen, query module, or type that is not in
+   service of a feature the user actually asked for is a finding, not progress.
 6. **Missing states.** A data-rendering component with no empty, loading, or error
    path. `null` avatars, `null` ratings, and photoless listings are the common case.
 7. **`service_role` anywhere near client code.** It bypasses RLS entirely. v1 has

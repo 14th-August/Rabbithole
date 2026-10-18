@@ -26,21 +26,36 @@ The git repository root is `Rabbithole/`; the Expo app lives in the nested
 | Path | Holds |
 | --- | --- |
 | `src/app/` | The route table. Every file in it is a URL. |
-| `src/theme/` | Design tokens — light and dark. Read `src/theme/README.md`. |
+| `src/components/` | The three shared auth inputs. Read `src/components/README.md`. |
 | `src/types/` | Domain types, plus the generated schema. Read `src/types/README.md`. |
-| `src/lib/` | Supabase client, queries, session, formatters. Read `src/lib/README.md`. |
+| `src/lib/` | Supabase client, auth, session, queries. Read `src/lib/README.md`. |
+| `supabase/` | Migrations, RLS, the VIU auth hook, seed. Run the CLI from here. |
 | `.claude/rules/` | The standards imported above. |
-| `.claude/agents/` | `researcher`, `architecture-reviewer`, `code-mentor`, `code-tutor`, `test-engineer`. |
-| `.claude/skills/` | `/daily-brief`. |
+| `.claude/agents/` | `researcher`, `architecture-reviewer`, `code-mentor`, `code-tutor`, `requirements-checker`, `test-engineer`. |
+| `.claude/skills/` | `/daily-brief`, `/verify`. |
 | `../ARCHITECTURE.md` | v1/v2 system design. **Gitignored** — local only, and absent in a worktree. |
+
+There is no `src/theme`. Styles are file-scoped `StyleSheet.create` blocks with
+literal values — see `design-rules.md`.
 
 ## State
 
-UI layers exist; screens do not. No backend, no auth, no tests.
+**The project was scaled back to working authentication on 2026-10-18.** Scope
+had outrun what was actually built: a feed, saved listings, messaging, orders and
+a 701-line create form existed as code, and none of it had ever run. 24 files
+were deleted on purpose. This is the floor to build out from, one feature at a
+time.
 
-- **Done** — navigation shell, theme tokens, domain types, fixtures.
-- **Next** — shared components, then screens, then the Supabase schema.
-- **Deferred on purpose** — Stripe. v1 settles in person; prepay is a v2 feature
-  designed to cost exactly one additive `ALTER TABLE`. See `ARCHITECTURE.md`.
-- **Known exception** — the five placeholder tab screens still hardcode colours,
-  predating the theme layer. They are being replaced; do not treat them as a pattern.
+- **Works end to end** — sign-up, the SMTP confirmation code, the `@my.viu.ca`
+  gate (a server-side `before_user_created` hook), sign-in, the five-day
+  staleness policy, sign-out, and the one-shot welcome splash.
+- **The signed-in app** is one screen: `(app)/index.tsx`, showing your own
+  profile fields and a sign-out button. That is deliberate, not unfinished.
+- **The database is complete and untouched** — 16 public tables, RLS, triggers,
+  views. The schema describes the whole marketplace even though the app no
+  longer does. `src/types/database.ts` is generated from it and in sync.
+- **Kept but unused** — `src/types/listing.ts`. No importer after the scale-down;
+  it is the shape to build back toward.
+- **Next** — one feature, briefed before it is written. Browse is the obvious
+  first, and `listing_summaries` already exists in the schema for it.
+- **No tests.** `test-engineer` has a harness to set up when that starts.

@@ -1,11 +1,11 @@
 /**
  * Shell shared by every authentication route.
  *
- * The chrome around the auth forms — page background, screen gutter, dismiss
+ * The chrome around the auth forms - page background, screen gutter, dismiss
  * control, and keeping the form clear of the keyboard. Each route supplies its
  * own fields, so this file never learns what "signing in" is. `(auth)` adds no
  * URL segment, so these live at `/sign-in`, not `/auth/sign-in`. There is
- * deliberately no `index.tsx`: it would compete with `(tabs)/index.tsx` for `/`.
+ * deliberately no `index.tsx`: it would compete with `(app)/index.tsx` for `/`.
  *
  * Returns: the auth `Stack` inside its shared chrome.
  */
@@ -15,7 +15,12 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useTheme } from "@/theme";
+/** The auth flow is a white page, not the app's slightly grey background. */
+const SURFACE = "#FFFFFF";
+const TEXT_PRIMARY = "#12161D";
+
+/** Default hitSlop for the dismiss chevron, whose glyph is smaller than its box. */
+const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
 /**
  * The screen this group opens on. Load-bearing, not cosmetic.
@@ -33,11 +38,10 @@ export const unstable_settings = { anchor: ANCHOR_SCREEN };
  * Wraps the auth stack in the page background, the standard screen gutter, and a
  * dismiss control.
  *
- * Screens rendered inside are responsible for their own vertical placement —
- * a navigator fills its parent, so centring cannot be imposed from out here.
+ * Screens rendered inside are responsible for their own vertical placement - a
+ * navigator fills its parent, so centring cannot be imposed from out here.
  */
 export default function AuthLayout() {
-  const { colors, layout, spacing } = useTheme();
   const router = useRouter();
   // Headers are hidden here, so nothing else is holding the control clear of the
   // notch or status bar. `expo-router` mounts the provider, so this is safe.
@@ -47,9 +51,8 @@ export default function AuthLayout() {
    * Step back through the auth flow.
    *
    * Only rendered when there is somewhere to go. Sign-in is the landing screen
-   * for a signed-out user now, so it has nothing behind it — and `/` is guarded
-   * away until a session exists, which is what the old unconditional push
-   * assumed.
+   * for a signed-out user, so it has nothing behind it - and `/` is guarded away
+   * until a session exists.
    */
   function handleDismiss() {
     router.back();
@@ -62,68 +65,57 @@ export default function AuthLayout() {
   const segments = useSegments();
   const canDismiss = segments[segments.length - 1] !== ANCHOR_SCREEN;
 
+  // Inline because it depends on a runtime inset, which a StyleSheet cannot hold.
+  const topSpacing = { marginTop: insets.top + 8 };
+
   return (
     <KeyboardAvoidingView
       // The background sits on the OUTERMOST element so no part of the screen is
-      // ever unpainted. While it was on the inner View, any region that View did
-      // not cover fell through to the navigator's own background, which is what
-      // read as a border around the app.
-      style={[styles.flex, { backgroundColor: colors.surface }]}
+      // ever unpainted. On the inner View, any region it did not cover fell
+      // through to the navigator's own background, which read as a border.
+      style={styles.screen}
       // iOS pushes content up; Android already resizes the window itself, and
       // applying "padding" on top of that double-counts and clips the form.
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      {/* `surface` is `neutral[0]` — #FFFFFF — but stays a token so the page, its
-          text, its fields and its borders remain a set one edit can restyle. */}
-      <View style={[styles.container, { paddingHorizontal: layout.screenPaddingX }]}>
+      <View style={styles.container}>
         {/* Outside the Stack so one control serves every screen in the group. */}
         {canDismiss ? (
           <Pressable
             onPress={handleDismiss}
             accessibilityRole="button"
             accessibilityLabel="Go back"
-            hitSlop={layout.hitSlop}
-            style={[
-              styles.dismiss,
-              {
-                width: layout.tapTargetMin,
-                height: layout.tapTargetMin,
-                marginTop: insets.top + spacing.sm,
-              },
-            ]}
+            hitSlop={HIT_SLOP}
+            style={[styles.dismiss, topSpacing]}
           >
-            <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+            <Ionicons name="chevron-back" size={24} color={TEXT_PRIMARY} />
           </Pressable>
         ) : (
           // Reserve the same height so the form does not jump when moving
           // between a screen with a back control and one without.
-          <View style={{ height: layout.tapTargetMin, marginTop: insets.top + spacing.sm }} />
+          <View style={[styles.dismissPlaceholder, topSpacing]} />
         )}
 
         <Stack
           screenOptions={{
             headerShown: false,
             // Instant swap, no slide. These screens are the same layout with
-            // different fields — the logo and heading sit in identical
-            // positions — so animating between them slides a near-identical
+            // different fields - the logo and heading sit in identical
+            // positions - so animating between them slides a near-identical
             // image across the screen, which reads as lag rather than motion.
-            // Cutting straight to the new one is both faster and calmer.
             animation: "none",
             // The back-swipe is a swipe too, and with no animation to drive it
-            // would be a gesture with nothing to show. The chevron in this
-            // layout is the way back.
+            // would be a gesture with nothing to show. The chevron is the way back.
             gestureEnabled: false,
             // Stops a screen re-rendering while it is blurred. Without it both
-            // screens stay live through the whole push, so every keystroke and
-            // state change on the one being animated away costs frames on the
-            // one arriving. react-native-screens does the freezing natively.
+            // screens stay live through the whole push, so every keystroke on
+            // the one being animated away costs frames on the one arriving.
             freezeOnBlur: true,
-            // Opaque, and painted from a token. "transparent" looks like the
-            // right answer and is not: the screen still falls through to React
-            // Navigation's own theme, which is a colour no token owns. That
-            // fall-through painted #F2F2F2 behind the form, inset by this
-            // layout's gutter — which is what the border around the app was.
-            contentStyle: { backgroundColor: colors.surface },
+            // Opaque, and painted explicitly. "transparent" looks like the right
+            // answer and is not: the screen falls through to React Navigation's
+            // own theme, which painted #F2F2F2 behind the form, inset by this
+            // layout's gutter - which is what the border around the app was.
+            contentStyle: { backgroundColor: SURFACE },
           }}
         />
       </View>
@@ -132,16 +124,24 @@ export default function AuthLayout() {
 }
 
 const styles = StyleSheet.create({
-  flex: {
+  screen: {
     flex: 1,
+    backgroundColor: SURFACE,
   },
   container: {
     flex: 1,
+    paddingHorizontal: 16,
   },
   dismiss: {
     alignItems: "center",
     justifyContent: "center",
     // Hugs the gutter rather than centring with the form above it.
     alignSelf: "flex-start",
+    // An accessibility floor, not a style preference.
+    width: 44,
+    height: 44,
+  },
+  dismissPlaceholder: {
+    height: 44,
   },
 });

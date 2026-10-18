@@ -34,9 +34,9 @@ The greps are the part worth extending. Each one encodes a rule from
 
 | Check | Enforces |
 | --- | --- |
-| Hex literals in `src/app` and `src/components` | "never hardcode a colour" |
-| `lib/supabase` imported by screens | "no screen calls the database directly" |
-| `theme/palette` imported outside `src/theme` | "raw ramps never leave the theme" |
+| `@/theme` or `useTheme` anywhere in `src` | the theme module is gone; styles are file-scoped |
+| `lib/supabase` imported by screens for data | "no screen calls the database directly" |
+| `#0165F2` and the mark width versus `app.json` | the splash handover must not flicker |
 
 **A rule that can be grepped should be grepped.** A written rule is a hope; a check
 in the brief is a fact, reported every morning without anyone remembering to look.

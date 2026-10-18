@@ -43,11 +43,11 @@ but still report drift found anywhere.
 ### Convention drift — hardcoded colours outside the theme (count per file)
 !`grep -rn "#[0-9a-fA-F]\{3,8\}\b" src/app src/components 2>/dev/null | awk -F: '{print $1}' | sort | uniq -c | sort -rn || echo "(none)"`
 
-### Convention drift — screens reaching past the query layer
-!`grep -rln "lib/supabase" src/app src/components 2>/dev/null || echo "(none — good)"`
+### Convention drift — anything still referencing the deleted theme
+!`grep -rn "@/theme\|useTheme" src --include="*.ts" --include="*.tsx" 2>/dev/null || echo "(none — good)"`
 
-### Convention drift — raw palette imports outside the theme
-!`grep -rn "theme/palette" src --include="*.ts" --include="*.tsx" 2>/dev/null | grep -v "^src/theme/" || echo "(none — good)"`
+### Convention drift — the three literals that must match app.json
+!`grep -rn "0165F2\|MARK_WIDTH = \|imageWidth" src/components/BootScreen.tsx src/components/WelcomeOverlay.tsx app.json 2>/dev/null`
 
 ### Backend status
 !`test -d supabase && find supabase -type f | head -20 || echo "no supabase/ directory — schema not started"`
@@ -81,13 +81,12 @@ versus what is real. Current areas: **UI**, **types**, **fixtures**, **backend**
 Only report what the checks above actually found. For each:
 
 - **Typecheck** — clean or the specific errors.
-- **Hardcoded values** — file:line for any colour literal outside `src/theme` and
-  `app.json`. Note that the five placeholder tab screens are a known, accepted
-  exception until they are replaced.
-- **Query-layer bypass** — any screen importing `lib/supabase` instead of going
-  through `lib/queries`. This should be empty; if it is not, it is the most
-  important line in the brief.
-- **Palette leakage** — any import of `theme/palette` from outside `src/theme`.
+- **Theme leftovers** — any surviving `@/theme` or `useTheme` reference. The
+  folder was deleted in the 2026-10-18 scale-down, so a hit means a file was
+  restored from an old branch without being converted.
+- **Splash literal drift** — `#0165F2` and the mark width in `BootScreen.tsx` and
+  `WelcomeOverlay.tsx` must still match `app.json`. A mismatch flickers at the
+  native-to-JS handover.
 - **Open markers** — TODO/FIXME worth acting on.
 
 **If everything is clean, say "no drift" in one line.** Do not manufacture findings

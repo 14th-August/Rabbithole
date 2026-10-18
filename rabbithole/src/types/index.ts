@@ -1,16 +1,19 @@
 /**
  * Domain types.
  *
- * The hand-written row types here are written ahead of the database, not
- * generated from it, and they carry the TSDoc explaining what a null means —
- * which generation cannot produce. `./database` holds the generated schema
- * beside them. Regenerate after every migration and diff the two: a difference
+ * The hand-written row types here carry the TSDoc explaining what a null means,
+ * which generation cannot produce; `./database` holds the generated schema
+ * beside them. Regenerate after every migration and diff the two — a difference
  * is either a schema mistake or a UI assumption that was never true.
  *
- * Returns: re-exports only. Import from `@/types`, not the files inside it, so
- * the internal split stays free to change.
+ * Returns: re-exports only. Import from `@/types`, not the files inside it.
  */
 
+/**
+ * Listing types. Nothing imports these yet — the marketplace screens were
+ * removed in the scale-down to auth. They are kept deliberately, as the shape
+ * to build back toward.
+ */
 export type {
   Category,
   Listing,
@@ -47,7 +50,3 @@ export type {
   ProfilePreview,
   PublicProfile,
 } from "./profile";
-
-export type { Conversation, ConversationSummary, Message } from "./messaging";
-
-export type { Review } from "./review";

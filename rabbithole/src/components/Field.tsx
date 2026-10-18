@@ -23,7 +23,25 @@ import {
 } from "react-native";
 
 import { FieldError } from "@/components/FieldError";
-import { useTheme, type TypographyVariant } from "@/theme";
+
+const SURFACE_SUNKEN = "#EFF1F5";
+const DANGER = "#DC2626";
+const PLACEHOLDER = "#9AA4B4";
+
+/**
+ * Type scale for the entered text.
+ *
+ * A small local map rather than a shared module: `verify` wants its six-digit
+ * code at `title2` so it reads as the subject of the screen, and every other
+ * field wants `body`. Two options is not a design system.
+ */
+const TEXT_SIZES = {
+  body: { fontSize: 16, lineHeight: 22, fontWeight: "400" },
+  title2: { fontSize: 20, lineHeight: 26, fontWeight: "600", letterSpacing: -0.2 },
+} satisfies Record<string, TextStyle>;
+
+/** Which entry in {@link TEXT_SIZES} to use. */
+export type FieldVariant = keyof typeof TEXT_SIZES;
 
 /** Everything a {@link Field} takes, on top of the usual `TextInput` props. */
 export interface FieldProps extends Omit<TextInputProps, "style"> {
@@ -42,13 +60,8 @@ export interface FieldProps extends Omit<TextInputProps, "style"> {
    */
   trailing?: ReactNode;
 
-  /**
-   * Type scale for the entered text. Defaults to `body`.
-   *
-   * `verify` uses `title2` so a six-digit code reads as the subject of the
-   * screen rather than as ordinary form input.
-   */
-  variant?: TypographyVariant;
+  /** Type scale for the entered text. Defaults to `body`. */
+  variant?: FieldVariant;
 
   /** Style for the text itself — alignment, letter spacing. */
   inputStyle?: StyleProp<TextStyle>;
@@ -69,7 +82,7 @@ export interface FieldProps extends Omit<TextInputProps, "style"> {
  *   keyboardType="email-address"
  *   accessibilityLabel="Email address"
  *   error={fieldError?.message ?? null}
- *   style={{ marginTop: spacing.md }}
+ *   style={{ marginTop: 12 }}
  * />
  * ```
  */
@@ -82,39 +95,22 @@ export function Field({
   multiline,
   ...inputProps
 }: FieldProps) {
-  const { colors, spacing, radius, layout, typography } = useTheme();
-
   return (
     <View style={styles.fullWidth}>
       <View
         style={[
           styles.pill,
-          {
-            minHeight: layout.tapTargetMin,
-            paddingHorizontal: spacing.lg,
-            borderRadius: radius.pill,
-            borderWidth: layout.borderWidth,
-            // No visible outline at rest — matched to the fill rather than
-            // removed, so colouring it on error cannot shift the layout.
-            borderColor: error !== null ? colors.status.danger : colors.surfaceSunken,
-            backgroundColor: colors.surfaceSunken,
-            // A multiline box grows downward, so it needs padding a 44pt
-            // single-line row gets for free.
-            alignItems: multiline ? "flex-start" : "center",
-            paddingVertical: multiline ? spacing.md : 0,
-          },
+          // A multiline box grows downward, so it needs padding a 44pt
+          // single-line row gets for free.
+          multiline ? styles.pillMultiline : styles.pillSingleLine,
+          error !== null ? styles.pillErrored : null,
           style,
         ]}
       >
         <TextInput
           multiline={multiline}
-          placeholderTextColor={colors.text.placeholder}
-          style={[
-            typography[variant],
-            styles.input,
-            { color: colors.text.primary },
-            inputStyle,
-          ]}
+          placeholderTextColor={PLACEHOLDER}
+          style={[styles.input, TEXT_SIZES[variant], inputStyle]}
           {...inputProps}
         />
 
@@ -132,10 +128,30 @@ const styles = StyleSheet.create({
   },
   pill: {
     flexDirection: "row",
+    minHeight: 44,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    borderWidth: 1,
+    backgroundColor: SURFACE_SUNKEN,
+    // No visible outline at rest — matched to the fill rather than removed, so
+    // colouring it on error cannot shift the layout.
+    borderColor: SURFACE_SUNKEN,
+  },
+  pillSingleLine: {
+    alignItems: "center",
+    paddingVertical: 0,
+  },
+  pillMultiline: {
+    alignItems: "flex-start",
+    paddingVertical: 12,
+  },
+  pillErrored: {
+    borderColor: DANGER,
   },
   input: {
     // Takes the row's slack so a trailing accessory sits against the far edge
     // rather than immediately after the text.
     flex: 1,
+    color: "#12161D",
   },
 });

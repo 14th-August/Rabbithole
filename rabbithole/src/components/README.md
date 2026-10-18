@@ -8,9 +8,16 @@ Presentational pieces reused across more than one screen, and full-screen states
 that are not routes — `BootScreen` is the latter: the app shows it while
 `SessionProvider` resolves, and it has no URL.
 
-Everything here reads design tokens through `useTheme()` and takes its content
-through props. A component that imports from `src/lib/queries/` is a screen
-wearing the wrong hat; move the fetch up to the route and pass the data down.
+Everything here declares its own styles in a file-scoped `StyleSheet.create`
+block and takes its content through props. A component that imports from
+`src/lib/queries/` is a screen wearing the wrong hat; move the fetch up to the
+route and pass the data down.
+
+Five live here: `Button`, `Field` and `FieldError` are shared by all three auth
+screens, and `BootScreen` and `WelcomeOverlay` are full-screen states with no
+URL. `WelcomeOverlay` is the one exception to the no-lib rule — it reads
+`consumeWelcome` itself, because whether a greeting is owed is its own question
+to answer rather than a prop three callers would have to thread.
 
 ## What does not
 
@@ -18,7 +25,8 @@ wearing the wrong hat; move the fetch up to the route and pass the data down.
   caller appears. Premature extraction is how a components folder fills with
   wrappers nobody can name.
 - **Routes.** Those are files in `src/app/`, and only files in `src/app/`.
-- **Raw colour ramps.** `src/theme/palette.ts` stays inside `src/theme`.
+- **A shared style module.** Styles are file-scoped on purpose — a repeated
+  colour literal is the convention here, not a duplicate to extract.
 - **Domain types.** They belong in `src/types` and are imported from the barrel.
 
 ## Current contents

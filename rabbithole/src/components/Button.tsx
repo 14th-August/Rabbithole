@@ -18,7 +18,12 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { useTheme } from "@/theme";
+const BRAND = "#0165F2";
+const ON_BRAND = "#FFFFFF";
+const TEXT_TERTIARY = "#6B7688";
+
+/** Default hitSlop for the text-only variant, which has no fill to aim at. */
+const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
 /**
  * Which of the two shapes to wear.
@@ -66,7 +71,7 @@ export interface ButtonProps {
  *   onPress={handleSubmit}
  *   disabled={!isComplete}
  *   isPending={submit.isPending}
- *   style={{ marginTop: spacing.xl }}
+ *   style={{ marginTop: 24 }}
  * />
  * ```
  */
@@ -79,8 +84,6 @@ export function Button({
   accessibilityLabel,
   style,
 }: ButtonProps) {
-  const { colors, radius, layout, typography } = useTheme();
-
   // A press mid-flight would fire the same action twice, so pending blocks just
   // as disabled does — but the two are announced differently below.
   const isInert = disabled || isPending;
@@ -96,34 +99,23 @@ export function Button({
       // `busy` makes the wait audible. `disabled` alone announces
       // "unavailable", which is misleading for a button that is working.
       accessibilityState={{ disabled: isInert, busy: isPending }}
-      hitSlop={isPrimary ? undefined : layout.hitSlop}
+      hitSlop={isPrimary ? undefined : HIT_SLOP}
       style={[
         styles.button,
-        {
-          minHeight: layout.tapTargetMin,
-          borderRadius: radius.pill,
-          backgroundColor: isPrimary ? colors.brand.default : "transparent",
-          // The filled pill dims whole; a text-only button recolours instead,
-          // since halving small text's opacity fails contrast.
-          opacity: isPrimary && isInert ? 0.5 : 1,
-        },
-        isPrimary ? styles.fullWidth : null,
+        isPrimary ? styles.primary : styles.ghost,
+        // The filled pill dims whole; a text-only button recolours instead,
+        // since halving small text's opacity fails contrast.
+        isPrimary && isInert ? styles.dimmed : null,
         style,
       ]}
     >
       {isPending ? (
-        <ActivityIndicator color={isPrimary ? colors.brand.onBrand : colors.brand.default} />
+        <ActivityIndicator color={isPrimary ? ON_BRAND : BRAND} />
       ) : (
         <Text
           style={[
-            isPrimary ? typography.bodyStrong : typography.footnote,
-            {
-              color: isPrimary
-                ? colors.brand.onBrand
-                : disabled
-                  ? colors.text.tertiary
-                  : colors.brand.default,
-            },
+            isPrimary ? styles.primaryLabel : styles.ghostLabel,
+            !isPrimary && disabled ? styles.ghostLabelDisabled : null,
           ]}
         >
           {label}
@@ -137,8 +129,34 @@ const styles = StyleSheet.create({
   button: {
     alignItems: "center",
     justifyContent: "center",
+    // An accessibility floor, not a style preference: 44 is the smallest square
+    // a finger can reliably hit.
+    minHeight: 44,
+    borderRadius: 999,
   },
-  fullWidth: {
+  primary: {
     width: "100%",
+    backgroundColor: BRAND,
+  },
+  ghost: {
+    backgroundColor: "transparent",
+  },
+  dimmed: {
+    opacity: 0.5,
+  },
+  primaryLabel: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "600",
+    color: ON_BRAND,
+  },
+  ghostLabel: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "400",
+    color: BRAND,
+  },
+  ghostLabelDisabled: {
+    color: TEXT_TERTIARY,
   },
 });

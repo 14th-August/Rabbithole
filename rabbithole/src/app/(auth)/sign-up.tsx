@@ -30,7 +30,15 @@ import {
 } from "@/lib/verification";
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/hooks";
-import { useTheme } from "@/theme";
+
+const TEXT_PRIMARY = "#12161D";
+const TEXT_SECONDARY = "#4C5566";
+const BRAND = "#0165F2";
+
+const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
+
+/** Matches sign-in exactly, so the logo does not shift across the transition. */
+const LOGO_SIZE = 96;
 
 /**
  * The values this form collects.
@@ -49,7 +57,6 @@ interface SignUpForm {
 
 /** The sign-up screen. */
 export default function SignUp() {
-  const { colors, spacing, radius, layout, typography } = useTheme();
   const router = useRouter();
 
   const [form, setForm] = useState<SignUpForm>({
@@ -170,45 +177,24 @@ export default function SignUp() {
     router.push({ pathname: "/verify", params: { email: created.email } });
   }
 
-  // 96 — two steps of the grid's largest token. Same derivation as sign-in, so
-  // the logo does not shift by a pixel across the transition.
-  const logoSize = spacing.xxxl * 2;
-
   return (
     <ScrollView
-      // paddingVertical inline because it is a token and StyleSheet.create has
-      // no hook. It only bites once the content is tall enough to scroll, and
-      // then it keeps the logo and footer off the safe-area edges.
-      contentContainerStyle={[styles.screen, { paddingVertical: spacing.xl }]}
+      contentContainerStyle={styles.screen}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
       <Image
         source={logo}
-        style={{ width: logoSize, height: logoSize, borderRadius: radius.pill }}
+        style={styles.logo}
         contentFit="cover"
         // Decorative: the heading directly below already names the action, so
         // announcing the logo too would only repeat it to a screen reader.
         accessible={false}
       />
 
-      <Text
-        style={[
-          typography.title1,
-          styles.centered,
-          { color: colors.text.primary, marginTop: spacing.xl },
-        ]}
-      >
-        Create account
-      </Text>
+      <Text style={styles.title}>Create account</Text>
 
-      <Text
-        style={[
-          typography.subhead,
-          styles.centered,
-          { color: colors.text.secondary, marginTop: spacing.xs },
-        ]}
-      >
+      <Text style={styles.subtitle}>
         Use your campus email so other students know you study here.
       </Text>
 
@@ -230,7 +216,7 @@ export default function SignUp() {
         autoComplete="username"
         accessibilityLabel="Username"
         error={fieldError?.field === "username" ? fieldError.message : null}
-        style={{ marginTop: spacing.xxl }}
+        style={styles.firstField}
       />
 
       <Field
@@ -243,7 +229,7 @@ export default function SignUp() {
         autoComplete="email"
         accessibilityLabel="Campus email address"
         error={fieldError?.field === "email" ? fieldError.message : null}
-        style={{ marginTop: spacing.md }}
+        style={styles.field}
       />
 
       <Field
@@ -255,7 +241,7 @@ export default function SignUp() {
         autoCapitalize="none"
         autoComplete="new-password"
         accessibilityLabel="Password"
-        style={{ marginTop: spacing.md }}
+        style={styles.field}
         trailing={
           // One toggle drives both fields. Revealing only one of a pair leaves
           // the typo hidden in the other, which is the exact thing the second
@@ -264,12 +250,12 @@ export default function SignUp() {
             onPress={() => setIsPasswordVisible(!isPasswordVisible)}
             accessibilityRole="button"
             accessibilityLabel={isPasswordVisible ? "Hide passwords" : "Show passwords"}
-            hitSlop={layout.hitSlop}
+            hitSlop={HIT_SLOP}
           >
             <Ionicons
               name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
               size={20}
-              color={colors.text.secondary}
+              color={TEXT_SECONDARY}
             />
           </Pressable>
         }
@@ -285,7 +271,7 @@ export default function SignUp() {
         autoComplete="new-password"
         accessibilityLabel="Confirm password"
         error={fieldError?.field === "confirmPassword" ? fieldError.message : null}
-        style={{ marginTop: spacing.md }}
+        style={styles.field}
       />
 
       {/*
@@ -300,7 +286,7 @@ export default function SignUp() {
         onPress={handleSubmit}
         disabled={!canSubmit}
         isPending={submit.isPending}
-        style={{ marginTop: spacing.xl }}
+        style={styles.submit}
       />
 
       {/*
@@ -309,13 +295,11 @@ export default function SignUp() {
         idea whether it succeeded, and the verify screen unreachable.
       */}
       <View
-        style={[styles.footer, { marginTop: spacing.xl, opacity: submit.isPending ? 0.4 : 1 }]}
+        style={[styles.footer, submit.isPending ? styles.footerBusy : null]}
         pointerEvents={submit.isPending ? "none" : "auto"}
       >
-        <Text style={[typography.footnote, { color: colors.text.secondary }]}>
-          Already have an account?{" "}
-        </Text>
-        <Link href="/sign-in" style={[typography.footnote, { color: colors.brand.default }]}>
+        <Text style={styles.footerText}>Already have an account? </Text>
+        <Link href="/sign-in" style={styles.footerLink}>
           Sign in
         </Link>
       </View>
@@ -328,12 +312,59 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
+    // Only bites once the content is tall enough to scroll, and then it keeps
+    // the logo and footer off the safe-area edges.
+    paddingVertical: 24,
   },
-  centered: {
+  logo: {
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
+    borderRadius: 999,
+  },
+  title: {
     textAlign: "center",
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+    color: TEXT_PRIMARY,
+    marginTop: 24,
+  },
+  subtitle: {
+    textAlign: "center",
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "400",
+    color: TEXT_SECONDARY,
+    marginTop: 4,
+  },
+  firstField: {
+    marginTop: 32,
+  },
+  field: {
+    marginTop: 12,
+  },
+  submit: {
+    marginTop: 24,
   },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
+    marginTop: 24,
+  },
+  footerBusy: {
+    opacity: 0.4,
+  },
+  footerText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "400",
+    color: TEXT_SECONDARY,
+  },
+  footerLink: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "400",
+    color: BRAND,
   },
 });

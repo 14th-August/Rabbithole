@@ -21,15 +21,20 @@ import { Field } from "@/components/Field";
 import { RESEND_COOLDOWN_SECONDS, confirmSignUp, resendSignUpCode } from "@/lib/verification";
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/hooks";
-import { useTheme } from "@/theme";
+
+const TEXT_PRIMARY = "#12161D";
+const TEXT_SECONDARY = "#4C5566";
+const BRAND = "#0165F2";
+const DANGER = "#DC2626";
+
+/** Matches the other two auth screens, so the logo does not shift. */
+const LOGO_SIZE = 96;
 
 /** Digits in a confirmation code. Set by `otp_length` in `supabase/config.toml`. */
 const CODE_LENGTH = 6;
 
 /** The verify screen. */
 export default function Verify() {
-  const { colors, spacing, radius, typography } = useTheme();
-
   // Query params are never guaranteed at runtime — typed routes check that a
   // route exists, not that it was given the params it wants. Someone opening
   // rabbithole://verify directly lands here with nothing.
@@ -65,10 +70,6 @@ export default function Verify() {
   const isComplete = code.length === CODE_LENGTH;
   const canSubmit = isComplete && !submit.isPending;
 
-  // 96 — two steps of the grid's largest token. Same derivation as the other two
-  // auth screens, so the logo does not shift across the transition.
-  const logoSize = spacing.xxxl * 2;
-
   /**
    * Keeps only digits, and never more than the code length. Codes get pasted
    * from mail clients with trailing spaces often enough that stripping here is
@@ -85,7 +86,7 @@ export default function Verify() {
     // No navigation on success, deliberately. Confirming a code returns a
     // session, which fires `onAuthStateChange`, which flips the root layout's
     // guard and swaps route groups. Routing by hand here would race that swap
-    // and can throw, because `(tabs)` is not in the tree at the instant it runs.
+    // and can throw, because `(app)` is not in the tree at the instant it runs.
     await submit.run({ email, token: code });
   }
 
@@ -102,42 +103,20 @@ export default function Verify() {
   if (!email) {
     return (
       <ScrollView
-        contentContainerStyle={[styles.screen, { paddingVertical: spacing.xl }]}
+        contentContainerStyle={styles.screen}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Image
-          source={logo}
-          style={{ width: logoSize, height: logoSize, borderRadius: radius.pill }}
-          contentFit="cover"
-          accessible={false}
-        />
+        <Image source={logo} style={styles.logo} contentFit="cover" accessible={false} />
 
-        <Text
-          style={[
-            typography.title1,
-            styles.centered,
-            { color: colors.text.primary, marginTop: spacing.xl },
-          ]}
-        >
-          Something&rsquo;s missing
-        </Text>
+        <Text style={styles.title}>Something&rsquo;s missing</Text>
 
-        <Text
-          style={[
-            typography.subhead,
-            styles.centered,
-            { color: colors.text.secondary, marginTop: spacing.xs },
-          ]}
-        >
+        <Text style={styles.subtitle}>
           This link didn&rsquo;t carry an email address, so there&rsquo;s no account to confirm.
           Start again and we&rsquo;ll send you a fresh code.
         </Text>
 
-        <Link
-          href="/sign-up"
-          style={[typography.footnote, { color: colors.brand.default, marginTop: spacing.xl }]}
-        >
+        <Link href="/sign-up" style={styles.standaloneLink}>
           Create an account
         </Link>
       </ScrollView>
@@ -146,35 +125,21 @@ export default function Verify() {
 
   return (
     <ScrollView
-      contentContainerStyle={[styles.screen, { paddingVertical: spacing.xl }]}
+      contentContainerStyle={styles.screen}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
       <Image
         source={logo}
-        style={{ width: logoSize, height: logoSize, borderRadius: radius.pill }}
+        style={styles.logo}
         contentFit="cover"
         // Decorative: the heading below already says what this screen is for.
         accessible={false}
       />
 
-      <Text
-        style={[
-          typography.title1,
-          styles.centered,
-          { color: colors.text.primary, marginTop: spacing.xl },
-        ]}
-      >
-        Check your email
-      </Text>
+      <Text style={styles.title}>Check your email</Text>
 
-      <Text
-        style={[
-          typography.subhead,
-          styles.centered,
-          { color: colors.text.secondary, marginTop: spacing.xs },
-        ]}
-      >
+      <Text style={styles.subtitle}>
         We sent a {CODE_LENGTH}-digit code to {email}.
       </Text>
 
@@ -195,8 +160,8 @@ export default function Verify() {
         // Larger than ordinary form input: the code is the subject of the screen,
         // not a detail on it.
         variant="title2"
-        inputStyle={{ textAlign: "center", letterSpacing: spacing.sm }}
-        style={{ marginTop: spacing.xxl }}
+        inputStyle={styles.codeInput}
+        style={styles.firstField}
       />
 
       <Button
@@ -207,7 +172,7 @@ export default function Verify() {
         // and conflating them would make the Confirm button claim to be working
         // while the user is only waiting on a new email.
         isPending={submit.isPending}
-        style={{ marginTop: spacing.xl }}
+        style={styles.submit}
       />
 
       <Button
@@ -222,18 +187,14 @@ export default function Verify() {
         // email is a separate wait from confirming a code, and one spinner for
         // both would misreport which call is actually running.
         isPending={resend.isPending}
-        style={{ marginTop: spacing.md }}
+        style={styles.resend}
       />
 
       {resend.error !== null ? (
         <Text
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
-          style={[
-            typography.footnote,
-            styles.centered,
-            { color: colors.status.danger, marginTop: spacing.xs },
-          ]}
+          style={styles.resendError}
         >
           {resend.error}
         </Text>
@@ -247,13 +208,11 @@ export default function Verify() {
         never arrive, and this link is their way out.
       */}
       <View
-        style={[styles.footer, { marginTop: spacing.xl, opacity: submit.isPending ? 0.4 : 1 }]}
+        style={[styles.footer, submit.isPending ? styles.footerBusy : null]}
         pointerEvents={submit.isPending ? "none" : "auto"}
       >
-        <Text style={[typography.footnote, { color: colors.text.secondary }]}>
-          Already have an account?{" "}
-        </Text>
-        <Link href="/sign-in" style={[typography.footnote, { color: colors.brand.default }]}>
+        <Text style={styles.footerText}>Already have an account? </Text>
+        <Link href="/sign-in" style={styles.footerLink}>
           Sign in
         </Link>
       </View>
@@ -266,12 +225,78 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 24,
   },
-  centered: {
+  logo: {
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
+    borderRadius: 999,
+  },
+  title: {
     textAlign: "center",
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+    color: TEXT_PRIMARY,
+    marginTop: 24,
+  },
+  subtitle: {
+    textAlign: "center",
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "400",
+    color: TEXT_SECONDARY,
+    marginTop: 4,
+  },
+  standaloneLink: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "400",
+    color: BRAND,
+    marginTop: 24,
+  },
+  firstField: {
+    marginTop: 32,
+  },
+  codeInput: {
+    textAlign: "center",
+    // Wide tracking so six digits read as six separate characters rather than a
+    // number, which is how people check a code against an email.
+    letterSpacing: 8,
+  },
+  submit: {
+    marginTop: 24,
+  },
+  resend: {
+    marginTop: 12,
+  },
+  resendError: {
+    textAlign: "center",
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "400",
+    color: DANGER,
+    marginTop: 4,
   },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
+    marginTop: 24,
+  },
+  footerBusy: {
+    opacity: 0.4,
+  },
+  footerText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "400",
+    color: TEXT_SECONDARY,
+  },
+  footerLink: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "400",
+    color: BRAND,
   },
 });

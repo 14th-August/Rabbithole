@@ -5,7 +5,7 @@
  * is in flight. Authenticating is `signIn` in `verification/auth.ts`; navigation
  * after success is handled by the root layout, not here. Field and button
  * geometry come from `@/components`. This is the first screen a signed-out user
- * sees — the root layout guards `(tabs)`, and `(auth)/_layout.tsx` anchors here.
+ * sees — the root layout guards `(app)`, and `(auth)/_layout.tsx` anchors here.
  *
  * Returns: the sign-in screen.
  */
@@ -27,7 +27,15 @@ import { FieldError } from "@/components/FieldError";
 import { isValidEmail, signIn } from "@/lib/verification";
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/hooks";
-import { useTheme } from "@/theme";
+
+const TEXT_PRIMARY = "#12161D";
+const TEXT_SECONDARY = "#4C5566";
+const BRAND = "#0165F2";
+
+const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
+
+/** 96pt — two steps of the largest spacing step, so the logo stays on the grid. */
+const LOGO_SIZE = 96;
 
 /**
  * The values this form collects.
@@ -42,7 +50,6 @@ interface SignInForm {
 
 /** The sign-in screen. */
 export default function SignIn() {
-  const { colors, spacing, radius, layout, typography } = useTheme();
   const router = useRouter();
 
   const [form, setForm] = useState<SignInForm>({ email: "", password: "" });
@@ -96,11 +103,6 @@ export default function SignIn() {
     // groups; navigating manually would race that swap.
   }
 
-  // 96 — two steps of the grid's largest token. Derived rather than written as a
-  // literal so the logo stays on the 4pt grid, and kept local because one
-  // screen's hero size does not belong in the shared theme.
-  const logoSize = spacing.xxxl * 2;
-
   return (
     // Deliberately not a ScrollView. This screen is short enough to fit, and a
     // scroller here costs a second scrollable view mounted during the push to
@@ -109,32 +111,16 @@ export default function SignIn() {
     <View style={styles.screen}>
       <Image
         source={logo}
-        style={{ width: logoSize, height: logoSize, borderRadius: radius.pill }}
+        style={styles.logo}
         contentFit="cover"
         // Decorative: the heading directly below already names the app, so
         // announcing the logo too would only repeat it to a screen reader.
         accessible={false}
       />
 
-      <Text
-        style={[
-          typography.title1,
-          styles.centered,
-          { color: colors.text.primary, marginTop: spacing.xl },
-        ]}
-      >
-        Welcome to Rabbithole!
-      </Text>
+      <Text style={styles.title}>Welcome to Rabbithole!</Text>
 
-      <Text
-        style={[
-          typography.subhead,
-          styles.centered,
-          { color: colors.text.secondary, marginTop: spacing.xs },
-        ]}
-      >
-        Buy and sell with students on your campus.
-      </Text>
+      <Text style={styles.subtitle}>Buy and sell with students on your campus.</Text>
 
       <Field
         value={form.email}
@@ -147,7 +133,7 @@ export default function SignIn() {
         accessibilityLabel="Email address"
         // Only this field, and only when this field is the problem.
         error={fieldError !== null ? fieldError.message : null}
-        style={{ marginTop: spacing.xxl }}
+        style={styles.firstField}
       />
 
       <Field
@@ -159,18 +145,18 @@ export default function SignIn() {
         autoCapitalize="none"
         autoComplete="current-password"
         accessibilityLabel="Password"
-        style={{ marginTop: spacing.md }}
+        style={styles.field}
         trailing={
           <Pressable
             onPress={() => setIsPasswordVisible(!isPasswordVisible)}
             accessibilityRole="button"
             accessibilityLabel={isPasswordVisible ? "Hide password" : "Show password"}
-            hitSlop={layout.hitSlop}
+            hitSlop={HIT_SLOP}
           >
             <Ionicons
               name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
               size={20}
-              color={colors.text.secondary}
+              color={TEXT_SECONDARY}
             />
           </Pressable>
         }
@@ -181,7 +167,6 @@ export default function SignIn() {
         server returns `invalid_credentials` for a wrong password and an unknown
         address alike — deliberately, so sign-in cannot enumerate accounts — so
         reddening an input would claim to know what the API refused to say.
-        Sitting below both, above the button, it reads as the form's answer.
       */}
       {submit.error !== null ? <FieldError message={submit.error} /> : null}
 
@@ -190,14 +175,12 @@ export default function SignIn() {
         onPress={handleSubmit}
         disabled={!canSubmit}
         isPending={submit.isPending}
-        style={{ marginTop: spacing.xl }}
+        style={styles.submit}
       />
 
-      <View style={[styles.footer, { marginTop: spacing.xl }]}>
-        <Text style={[typography.footnote, { color: colors.text.secondary }]}>
-          Don&apos;t have an account?{" "}
-        </Text>
-        <Link href="/sign-up" style={[typography.footnote, { color: colors.brand.default }]}>
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+        <Link href="/sign-up" style={styles.footerLink}>
           Sign up
         </Link>
       </View>
@@ -211,11 +194,52 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  centered: {
+  logo: {
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
+    borderRadius: 999,
+  },
+  title: {
     textAlign: "center",
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+    color: TEXT_PRIMARY,
+    marginTop: 24,
+  },
+  subtitle: {
+    textAlign: "center",
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "400",
+    color: TEXT_SECONDARY,
+    marginTop: 4,
+  },
+  firstField: {
+    marginTop: 32,
+  },
+  field: {
+    marginTop: 12,
+  },
+  submit: {
+    marginTop: 24,
   },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
+    marginTop: 24,
+  },
+  footerText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "400",
+    color: TEXT_SECONDARY,
+  },
+  footerLink: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "400",
+    color: BRAND,
   },
 });

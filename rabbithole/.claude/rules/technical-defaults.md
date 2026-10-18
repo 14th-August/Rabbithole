@@ -42,10 +42,10 @@ with `npx expo install --check`, never `npm update`.
 ## Imports
 
 ```ts
-import { useTheme } from "@/theme";          // → src/theme
-import type { ListingSummary } from "@/types";
-import { getFeed } from "@/lib/queries/listings";
-import icon from "@/assets/images/tabIcons/home.png";
+import { useSession } from "@/lib/verification";   // → src/lib/verification
+import type { MyProfile } from "@/types";
+import { getMyProfile } from "@/lib/queries/profiles";
+import logo from "@/assets/images/logo-round.png";
 ```
 
 Always the alias, never a long relative chain. Import from a folder's barrel
@@ -76,15 +76,16 @@ fail silently.
 ```
 src/app/        routes and screens
 src/components/ shared UI
-src/theme/      design tokens          ← no imports from app/components
 src/types/      domain types           ← no imports from anything but itself
-src/lib/        client, queries, formatters
+src/lib/        client, queries, session
 ```
 
-- **No screen calls `supabase` directly.** Screens read through `src/lib/queries/`,
-  which is the single place the database is touched. `grep -rn "lib/supabase" src/app
-  src/components` must stay empty.
-- **`src/theme/palette.ts` is private to `src/theme`.** Raw ramps never leave.
+- **No screen calls `supabase` for data.** Screens read through
+  `src/lib/queries/`, which is the single place the database is touched. Auth is
+  the one exception: a screen passes the client to `signIn`/`signUp`/`signOut`,
+  because those take it as an argument rather than importing the singleton.
+- **There is no `src/theme`.** Styles are file-scoped `StyleSheet.create` blocks
+  with literal values — see `design-rules.md`.
 
 ## Documentation
 

@@ -40,8 +40,8 @@ when it genuinely does not apply, and say so rather than silently dropping it.
    they decide it.
 3. **What already exists that this must use** — named, with paths. This matters
    more than anything else in the brief: this codebase has helpers that get
-   rebuilt by accident. Check `src/lib/`, `src/theme/`, `src/types/` before
-   proposing anything new.
+   rebuilt by accident. Check `src/lib/` and `src/types/` before proposing
+   anything new.
 4. **The shape** — a skeleton. Signatures, the order of operations, and the
    names of things. Pseudocode or a heavily elided outline, **not** a finished
    implementation the reader can paste. If they can paste it, you have written
@@ -59,9 +59,10 @@ when it genuinely does not apply, and say so rather than silently dropping it.
 
 1. **Read before advising.** Read the files the feature touches, completely.
    Partial reads produce confident wrong advice about the part you skipped.
-2. **Check what exists first.** `src/lib/utils/format.ts`, `src/lib/storage.ts`,
-   `src/lib/hooks/useAsync.ts`, `src/theme/`, `src/types/` — this project's most common
-   failure is proposing something already written.
+2. **Check what exists first.** `src/lib/hooks/useAsync.ts`,
+   `src/lib/queries/errors.ts`, `src/lib/verification/`, `src/types/` — this
+   project's most common failure is proposing something already written. Note the
+   scale-down deleted `format.ts` and `storage.ts`; do not cite them.
 3. **Read the rules that bind the answer.** `.claude/rules/technical-defaults.md`
    for layering and conventions, `design-rules.md` when UI is involved,
    `docs/backend/` when the database is.
@@ -101,7 +102,7 @@ when it genuinely does not apply, and say so rather than silently dropping it.
   Any write you design must chain `.select()` and treat zero rows as failure.
 - **No `useMemo` / `useCallback`** — the React Compiler is on and hand-memoising
   defeats it.
-- **Nothing hardcoded from the design system.** Every colour, spacing, radius and
-  font size comes from `useTheme()`.
+- **Styles are file-scoped `StyleSheet.create` blocks with literal values.**
+  There is no theme module. Take values from the table in `design-rules.md`.
 - **Screens never call `supabase` directly.** They go through `src/lib/queries/`,
   whose functions take the client as their first argument.

@@ -7,10 +7,11 @@ How work proceeds on Rabbithole. Loaded into every session via `AGENTS.md`.
 1. **Read the versioned Expo docs** at https://docs.expo.dev/versions/v57.0.0/ for
    any Expo or React Native API you are about to touch. SDK 57 changed things;
    memory and older tutorials are unreliable. This is not optional.
-2. **Check whether the thing already exists.** `src/theme` has tokens, `src/types`
-   has domain types, `src/lib` has the client, queries and formatters. A new colour
-   constant, a new `Listing` interface, or a second date formatter is almost always
-   a duplicate.
+2. **Check whether the thing already exists.** `src/types` has domain types and
+   `src/lib` has the client, the queries and the session. A second `Listing`
+   interface or a second date formatter is almost always a duplicate. Styles are
+   the exception: they are file-scoped on purpose, so a repeated colour literal
+   is the convention, not a duplicate.
 3. **Read the neighbouring file** before adding a sibling. Match its structure,
    comment density, and naming rather than importing a different style.
 
@@ -19,9 +20,10 @@ How work proceeds on Rabbithole. Loaded into every session via `AGENTS.md`.
 A change is not done until all of these hold:
 
 - [ ] `npx tsc --noEmit` exits clean.
-- [ ] Rendered and eyeballed on a device. Not "it should be fine". Only the light
-      scheme ships today — see design rule 2 — so one pass, but an actual one.
-- [ ] No hardcoded colour, spacing, radius, or font size — everything from `useTheme()`.
+- [ ] Rendered and eyeballed on a device. Not "it should be fine". The app is
+      light only, so one pass — but an actual one.
+- [ ] Styles in a file-scoped `StyleSheet.create` block, inline only where a
+      value is genuinely dynamic. Values from the table in `design-rules.md`.
 - [ ] Module header present, exported symbols carry TSDoc.
 - [ ] Empty, loading, and error states considered for anything that renders data.
 - [ ] No new dependency added without `npx expo install` (see technical defaults).
@@ -52,7 +54,7 @@ parallel; non-overlapping directories do.
 
 | Owner | May write | Reads only |
 | --- | --- | --- |
-| UI session | `src/theme`, `src/components`, `src/app`, `src/types`, `src/lib` | — |
+| UI session | `src/components`, `src/app`, `src/types`, `src/lib` | — |
 | Backend session | `supabase/`, migration and seed files | `src/types` |
 | Any session | its own scratch files | — |
 

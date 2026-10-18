@@ -9,11 +9,8 @@ rather than shape, and everything that talks to Supabase.
 | --- | --- |
 | `supabase.ts` | The client, its session storage, and token refresh |
 | `verification/` | Sign-up, sign-in, the current session, and the form checks that guard them |
-| `queries/` | One module per domain area; the only callers of `supabase` |
-| `hooks/` | `useAsync`, `useQuery`, `usePaged` — the lifecycle of a request |
-| `utils/` | `format.ts` — stored value in, display string out |
-| `storage.ts` | `storage_path` → URL |
-| `validateListing.ts` | The Create form's draft checks |
+| `queries/` | `errors.ts` (raw failures to sentences), `profiles.ts`, `rows.ts` (the view-nullability cast) |
+| `hooks/` | `useAsync` — the lifecycle of one request |
 
 Each subfolder has an `index.ts` barrel. Import `@/lib/verification`, not
 `@/lib/verification/auth` — the folder's internal split stays free to change.
