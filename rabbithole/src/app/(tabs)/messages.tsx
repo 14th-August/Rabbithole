@@ -1,8 +1,10 @@
 /**
  * Messages screen — `/messages`.
  *
- * Owns: the list of conversations. A themed placeholder for now.
- * Does not own: an individual thread. That will be its own route.
+ * The list of conversations, a themed placeholder for now. An individual thread
+ * will be its own route.
+ *
+ * Returns: the Messages tab screen.
  */
 
 import { StyleSheet, Text, View } from "react-native";

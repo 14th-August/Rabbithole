@@ -88,22 +88,32 @@ src/lib/        client, queries, formatters
 
 ## Documentation
 
-**Module header on every file:**
+**Module header on every file** — a one-line summary, up to four lines of plain
+English on what is inside, then what callers get back:
 
 ```ts
 /**
- * <What this module is.>
+ * <What this module is, in one line.>
  *
- * Owns: <the responsibility it holds>
- * Does not own: <the neighbouring responsibility it deliberately refuses>
+ * <Two to four lines: what lives in this file, and the one constraint a cold
+ * reader needs to know. Plain English, no scaffolding.>
+ *
+ * Returns: <what callers get back from the exports here.>
  */
 ```
 
-The "does not own" line is the valuable half — it stops files accreting unrelated
-logic and points a cold reader somewhere else.
+**Keep headers to roughly four lines of prose.** Long rationale essays, doc
+cross-references, and "the alternative I rejected" paragraphs do not belong in a
+header — they are what the reader has to scroll past to reach the code. State the
+constraint in a sentence; put the long version in `ARCHITECTURE.md` or a folder
+`README.md`, which are read on demand.
 
 **TSDoc on every exported symbol.** These render on IDE hover, so they pay off
 continuously. Document what a prop *means*, not what its type already says.
+
+**When a file holds more than one function, each gets its own block** — one to
+three lines on what it does and the single non-obvious reason it is written that
+way, then a `Returns:` line. Do not fold several functions into one header.
 
 **"Why" comments at non-obvious decisions**, never narration:
 

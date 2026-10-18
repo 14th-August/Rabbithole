@@ -1,19 +1,14 @@
 /**
  * Sign-up screen — `/sign-up`.
  *
- * Owns: the sign-up form, the values typed into it, whether the two passwords
- * agree, and what to show while the request is in flight.
- * Does not own: creating the account. That is `signUp` in
- * `src/lib/verification/auth.ts`. Nor enforcing the VIU rule — the gate is a
- * server-side auth hook, so this screen only relays whatever it says. Nor the
- * geometry of its own fields and button, which are `Field` and `Button` in
- * `src/components`.
+ * The sign-up form, the values typed into it, whether the two passwords agree,
+ * and what to show while the request is in flight. Creating the account is
+ * `signUp` in `verification/auth.ts`, and the VIU rule is a server-side auth
+ * hook this screen only relays. Mirrors `sign-in.tsx` element for element so
+ * moving between them reads as one screen changing — except that this scrolls,
+ * since four fields and a keyboard do not fit on a small phone.
  *
- * Deliberately mirrors `sign-in.tsx` element for element — same logo at the same
- * size, same spacing rhythm, same pill fields and button — so moving between the
- * two reads as one screen changing rather than two screens swapping. The one
- * structural difference is that this scrolls: four fields and a keyboard do not
- * fit on a small phone, where sign-in's two do.
+ * Returns: the sign-up screen.
  */
 
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -98,15 +93,11 @@ export default function SignUp() {
   }
 
   /**
-   * Check the username once the user leaves the field, not on every keystroke.
+   * Checks the username on blur, not per keystroke — a request per character
+   * would ask about `k`, `ke`, `kel` and call a name taken mid-typing.
    *
-   * A request per character would ask the server about `k`, `ke`, `kel` — all
-   * available, none meaningful — and would tell someone their username is
-   * taken while they are still halfway through typing it.
-   *
-   * A stale answer here is not dangerous. The database re-validates on insert
-   * and `signUp` turns a lost race back into a sentence, so this is a
-   * courtesy, never the guarantee.
+   * A stale answer is harmless: the database re-validates on insert and `signUp`
+   * turns a lost race back into a sentence. A courtesy, never the guarantee.
    */
   async function handleUsernameBlur() {
     const username = form.username.trim();

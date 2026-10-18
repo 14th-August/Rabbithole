@@ -1,8 +1,10 @@
 /**
  * Saved screen — `/saved`.
  *
- * Owns: the listings this student has bookmarked. A themed placeholder for now.
- * Does not own: saving or unsaving. That belongs to the listing card.
+ * The listings this student has bookmarked, a themed placeholder for now.
+ * Saving and unsaving belong to the listing card.
+ *
+ * Returns: the Saved tab screen.
  */
 
 import { StyleSheet, Text, View } from "react-native";

@@ -1,15 +1,13 @@
 /**
  * Review types — the trust layer.
  *
- * Owns: the shape of a review left after a completed trade.
- * Does not own: rating aggregation. `profiles.rating_avg` is maintained by a
- *   database trigger, not by client code summing this array.
+ * The shape of a review left after a completed trade. Rating aggregation is not
+ * here: `profiles.rating_avg` is maintained by a database trigger, not by client
+ * code summing an array. Reviews hang off an ORDER, not a listing or a user
+ * pair, which is what makes the trust layer mean something — selling two
+ * textbooks is two orders and so two reviewable events.
  *
- * Reviews hang off an **order**, not a listing and not a user pair. That is what
- * makes the trust layer mean something: a review requires a transaction both
- * parties confirmed, rather than a conversation about a listing someone later
- * marked sold. Selling Maya two textbooks is two orders and so two reviewable
- * events, rather than one overwritten opinion.
+ * Returns: types only. No behaviour lives in `src/types`.
  */
 
 export interface Review {
@@ -17,12 +15,11 @@ export interface Review {
 
   /**
    * The completed order being reviewed. One review per reviewer per order, so a
-   * finished trade yields at most two — one from each side.
+   * finished trade yields at most two.
    *
    * `enforce_review_eligibility` rejects an insert whose order is not
-   * `completed`, or whose reviewer and reviewee are not its two parties. The
-   * UI's job is to offer the control only when those hold; the trigger is what
-   * guarantees it.
+   * `completed`, or whose reviewer and reviewee are not its two parties. The UI
+   * offers the control only when those hold; the trigger guarantees it.
    */
   order_id: string;
 
@@ -32,11 +29,9 @@ export interface Review {
   /**
    * 1..5 inclusive.
    *
-   * Typed as `number`, not `1 | 2 | 3 | 4 | 5`, even though the union would be
-   * nicer for star rendering. The range is enforced by a CHECK constraint in the
-   * database, and PostgREST returns a plain number — a literal union here would
-   * force a cast on every read and quietly lie about what the wire actually
-   * carries. Types mirror the source of truth; the source of truth is the column.
+   * `number`, not `1 | 2 | 3 | 4 | 5`, even though the union reads nicer for
+   * stars. The range is a CHECK constraint and PostgREST returns a plain number,
+   * so a literal union would force a cast on every read and lie about the wire.
    */
   rating: number;
 

@@ -1,16 +1,14 @@
 /**
  * The screen shown while the app works out who is signed in.
  *
- * Owns: what the user looks at between the native splash disappearing and the
- *   first real route mounting.
- * Does not own: the work itself. `SessionProvider` reads the stored session and
- *   applies the five-day rule; this only stands in while that resolves.
+ * Stands in between the native splash disappearing and the first real route
+ * mounting; `SessionProvider` does the actual work. Painted `brand.launch`
+ * rather than `surface` because the native splash before it is a fixed `#0165F2`
+ * from app.json, drawn by the OS before any JavaScript runs — matching that
+ * colour and reusing the same white rabbit makes the handover invisible. A white
+ * page here would flash blue then white, which reads as a bug.
  *
- * Why it is painted `brand.launch` rather than `surface`: the native splash that
- * precedes it is a fixed `#0165F2` from app.json, drawn by the OS before any
- * JavaScript runs. Matching that colour exactly — and reusing the same white
- * rabbit at the same width — makes the handover invisible. A white page here
- * would flash blue then white, which reads as a bug even though it is not.
+ * Returns: a full-screen branded placeholder with a spinner and optional line.
  */
 
 import { Image } from "expo-image";
@@ -41,12 +39,9 @@ export function BootScreen({ message }: BootScreenProps) {
       accessibilityRole="progressbar"
       accessibilityLabel="Loading Rabbithole"
     >
-      {/*
-        A square box with `contain` rather than the mark's true 512x454 ratio.
-        The rendered rabbit is still exactly `splashMarkWidth` across, which is
-        what has to match the native splash; the extra height is transparent and
-        sits on the same blue, so it cannot be seen.
-      */}
+      {/* Square box with `contain`, not the mark's true 512x454. The rabbit is
+          still exactly `splashMarkWidth` across, which is what must match the
+          native splash; the spare height is transparent on the same blue. */}
       <Image
         source={mark}
         style={{ width: layout.splashMarkWidth, height: layout.splashMarkWidth }}

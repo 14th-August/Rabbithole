@@ -1,19 +1,14 @@
 /**
  * The pill text field.
  *
- * Owns: the pill geometry every text input in the app wears, the error colouring
- *   that marks one as wrong, and placing the message underneath it.
- * Does not own: deciding what is wrong. Callers validate and pass a sentence —
- *   see `src/lib/verification/validation.ts`. Nor the label above a field;
- *   screens lay their own copy out.
+ * The pill geometry every text input wears, the error colouring that marks one
+ * wrong, and the message underneath it. Callers decide what is wrong and pass a
+ * sentence; screens lay out their own labels. Extracted from three auth screens
+ * that each defined the same `fieldStyle` literal — three copies is how two
+ * quietly drift by a pixel.
  *
- * Extracted from `sign-in`, `sign-up`, and `verify`, which each defined the same
- * `fieldStyle` object literal. Three copies is how two of them quietly drift by a
- * pixel; the geometry now has one home.
- *
- * Geometry borrows Spotify's fully-rounded fields. Deliberately not borrowed:
- * their uppercase, letter-spaced labels, which read as brand styling rather than
- * platform convention.
+ * Returns: a pill-wrapped `TextInput`, with a {@link FieldError} below it when
+ * `error` is set.
  */
 
 import type { ReactNode } from "react";
@@ -99,14 +94,12 @@ export function Field({
             paddingHorizontal: spacing.lg,
             borderRadius: radius.pill,
             borderWidth: layout.borderWidth,
-            // No visible outline at rest. The width stays so an error can colour
-            // it in without the field growing by a pixel and nudging everything
-            // below it; matching the fill is what hides it rather than removing
-            // it.
+            // No visible outline at rest — matched to the fill rather than
+            // removed, so colouring it on error cannot shift the layout.
             borderColor: error !== null ? colors.status.danger : colors.surfaceSunken,
             backgroundColor: colors.surfaceSunken,
-            // A multiline box grows downward, so its contents start at the top
-            // and need room to breathe that a 44pt single-line row gets for free.
+            // A multiline box grows downward, so it needs padding a 44pt
+            // single-line row gets for free.
             alignItems: multiline ? "flex-start" : "center",
             paddingVertical: multiline ? spacing.md : 0,
           },

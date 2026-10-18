@@ -1,14 +1,14 @@
 /**
  * Reading and writing listings.
  *
- * Owns: every query that touches `listings`, `listing_images`, `listing_summaries`
- *   and `saved_listings`.
- * Does not own: formatting. A price stays integer cents until `formatPrice`
- *   renders it, and a `storage_path` stays a path until `publicUrl` resolves it.
+ * Every query touching `listings`, `listing_images`, `listing_summaries` and
+ * `saved_listings`. Formatting is not done here — a price stays integer cents
+ * until `formatPrice`, a `storage_path` stays a path until `publicUrl`.
+ * Authorization is not done here either: RLS filters rows before they reach this
+ * file, so the filters below narrow results, they never secure them.
  *
- * Authorization is **not** handled here. RLS filters every row before it reaches
- * this file, so a `.eq("seller_id", …)` added for *security* is false comfort —
- * the policy already ran. Filters below exist only to narrow a result.
+ * Returns: `AsyncResult` throughout — a list query gives `[]` for no rows, a
+ * detail query gives `null` for a listing that does not exist or is not visible.
  */
 
 import type { Db } from "@/lib/supabase";
@@ -39,19 +39,16 @@ export const FEED_PAGE_SIZE = 20;
  */
 const FEED_STATUSES: ListingStatus[] = ["active", "reserved"];
 
-// The `listing_summaries` rows come back with every column typed `| null` and
-// the composed objects as bare `Json`. `viewRows` is where that is narrowed and
-// why — see src/lib/queries/rows.ts.
-
 /**
  * The Discover feed: live listings, newest first.
  *
- * Reads the `listing_summaries` view rather than composing embeds client-side,
- * because `src/types/README.md` describes `ListingSummary` as "a forward
- * declaration of a Postgres view" — this is that view.
+ * Reads the `listing_summaries` view rather than composing embeds client-side.
+ * `viewRows` narrows the view's all-nullable types — see `rows.ts`.
  *
- * @param page 0-based. Offset paging is fine at one campus; keyset pagination is
- *   correct at scale but the crossover is a long way off.
+ * Returns one page of summaries.
+ *
+ * @param page 0-based. Offset paging is fine at one campus; keyset is correct at
+ *   scale but the crossover is a long way off.
  */
 export async function getFeed(
   db: Db,
@@ -63,9 +60,9 @@ export async function getFeed(
     .from("listing_summaries")
     .select("*")
     .in("status", FEED_STATUSES)
-    // bumped_at, not created_at. Renewing a listing lifts it in the feed
-    // without rewriting its age, and `listings_feed_idx` is built on this
-    // column — ordering on created_at would silently stop using the index.
+    // bumped_at, not created_at. Renewing lifts a listing without rewriting its
+    // age, and `listings_feed_idx` is built on this column — ordering on
+    // created_at would silently stop using the index.
     .order("bumped_at", { ascending: false })
     .range(from, from + FEED_PAGE_SIZE - 1);
 
@@ -77,10 +74,10 @@ export async function getFeed(
  * One listing, with its seller, category and ordered photos.
  *
  * Composed with embeds rather than a view because the detail screen is the only
- * caller and its shape is allowed to change with the screen.
+ * caller, so its shape may change with the screen.
  *
- * @returns `null` data with no error when the listing does not exist or is not
- *   visible to this user — absence is an answer, not a failure.
+ * Returns `null` data with no error when the listing does not exist or is not
+ * visible to this user — absence is an answer, not a failure.
  */
 export async function getListing(
   db: Db,
@@ -90,8 +87,8 @@ export async function getListing(
     .from("listings")
     .select(
       // The seller embed reads `public_profiles`, not `profiles`. The table
-      // denies most columns to clients outright — column grants, not RLS — so
-      // embedding it would fail at runtime even though the string type-checks.
+      // denies most columns to clients via column grants, not RLS, so embedding
+      // it would fail at runtime even though the string type-checks.
       `*,
        seller:public_profiles!listings_seller_id_fkey (
          id, username, avatar_path, rating_avg, rating_count
@@ -102,12 +99,11 @@ export async function getListing(
        images:listing_images (id, listing_id, storage_path, position, width, height)`,
     )
     .eq("id", id)
-    // The foreign keys are named explicitly because `conversations` has two FKs
-    // to `profiles`; PostgREST cannot guess which one a bare embed meant, and the
-    // habit is worth keeping consistent.
+    // Foreign keys are named explicitly because `conversations` has two FKs to
+    // `profiles` and PostgREST cannot guess which a bare embed meant.
     .order("position", { referencedTable: "listing_images", ascending: true })
-    // maybeSingle, not single: a missing listing is a legitimate answer. Reaching
-    // for .single() here would turn an empty state into an error state.
+    // maybeSingle, not single: a missing listing is a legitimate answer, and
+    // .single() would turn an empty state into an error state.
     .maybeSingle();
 
   if (error) return fail(toMessage(error));
@@ -124,13 +120,17 @@ export async function getListing(
     seller: row.seller,
     category: row.category,
     images: row.images ?? [],
-    // The detail embed does not carry the per-viewer save flag; the screen reads
-    // it from the feed row it navigated from, or calls isSaved() below.
+    // The detail embed carries no per-viewer save flag; the screen reads it from
+    // the feed row it navigated from, or calls isSaved() below.
     is_saved: false,
   });
 }
 
-/** Whether the signed-in user has saved this listing. */
+/**
+ * Whether the signed-in user has saved this listing.
+ *
+ * Returns `true` when a save row exists.
+ */
 export async function isSaved(db: Db, listingId: string): Promise<AsyncResult<boolean>> {
   const { data, error } = await db
     .from("saved_listings")
@@ -142,13 +142,18 @@ export async function isSaved(db: Db, listingId: string): Promise<AsyncResult<bo
   return ok(data !== null);
 }
 
-/** Every listing the signed-in user has saved, most recent first. */
+/**
+ * Every listing the signed-in user has saved, most recent first.
+ *
+ * Needs no join and no user id: `is_saved` is computed per viewer inside the
+ * view, which already knows who is asking.
+ *
+ * Returns the saved summaries.
+ */
 export async function getSavedListings(db: Db): Promise<AsyncResult<ListingSummary[]>> {
   const { data, error } = await db
     .from("listing_summaries")
     .select("*")
-    // is_saved is computed per viewer inside the view, so this needs no join and
-    // no user id — the view already knows who is asking.
     .eq("is_saved", true)
     .order("created_at", { ascending: false });
 
@@ -156,7 +161,14 @@ export async function getSavedListings(db: Db): Promise<AsyncResult<ListingSumma
   return ok(viewRows<ListingSummary>(data));
 }
 
-/** The signed-in user's own listings, drafts included, newest first. */
+/**
+ * The signed-in user's own listings, drafts included, newest first.
+ *
+ * The `seller_id` filter narrows, it does not secure — the policy already hides
+ * other people's drafts; this excludes their live listings too.
+ *
+ * Returns the user's summaries.
+ */
 export async function getMyListings(
   db: Db,
   sellerId: string,
@@ -164,8 +176,6 @@ export async function getMyListings(
   const { data, error } = await db
     .from("listing_summaries")
     .select("*")
-    // Narrowing, not security. The policy already hides other people's drafts;
-    // this excludes other people's *live* listings, which is a product decision.
     .eq("seller_id", sellerId)
     .order("created_at", { ascending: false });
 
@@ -174,10 +184,13 @@ export async function getMyListings(
 }
 
 /**
- * Create a listing.
+ * Creates a listing.
  *
  * `.select()` is required, not optional: `insert()` returns no rows by default in
  * supabase-js v2, so without it there is no way to learn the generated id.
+ *
+ * Returns the new row. Checking `error` is sufficient here — an INSERT blocked by
+ * WITH CHECK does raise 42501; updates and deletes are the silent ones.
  */
 export async function createListing(
   db: Db,
@@ -185,19 +198,18 @@ export async function createListing(
 ): Promise<AsyncResult<Listing>> {
   const { data, error } = await db.from("listings").insert(input).select().single();
 
-  // An INSERT blocked by WITH CHECK *does* raise 42501, so checking error is
-  // sufficient here. Updates and deletes are the ones that fail silently.
   if (error) return fail(toMessage(error));
   return ok(data as unknown as Listing);
 }
 
 /**
- * Move a listing to a new status — the seller marking something reserved or sold.
+ * Moves a listing to a new status — the seller marking something reserved or sold.
  *
- * Demonstrates the rule every write in this folder follows: chain `.select()` and
- * treat zero rows as a failure. An RLS `USING` clause makes a row you do not own
- * *invisible* rather than forbidden, so this update would otherwise report success
- * having changed nothing.
+ * Shows the rule every write here follows: chain `.select()` and treat zero rows
+ * as failure. An RLS `USING` clause makes a row you do not own invisible rather
+ * than forbidden, so this would otherwise report success having changed nothing.
+ *
+ * Returns the updated row, or a failure if the listing is not the caller's.
  */
 export async function setListingStatus(
   db: Db,
@@ -218,12 +230,13 @@ export async function setListingStatus(
 }
 
 /**
- * Save a listing.
+ * Saves a listing.
  *
- * Uses `upsert` rather than insert so tapping the bookmark twice is harmless. The
- * composite primary key `(user_id, listing_id)` is what makes that work — a second
- * save resolves at the database in one round trip instead of a read-then-branch
- * with a race in the middle.
+ * `upsert` rather than insert so a double tap is harmless. The composite primary
+ * key `(user_id, listing_id)` is what makes that work — a second save resolves at
+ * the database in one round trip instead of a read-then-branch with a race in it.
+ *
+ * Returns `ok(null)` on success.
  */
 export async function saveListing(
   db: Db,
@@ -239,11 +252,13 @@ export async function saveListing(
 }
 
 /**
- * Unsave a listing.
+ * Unsaves a listing.
  *
- * The clearest example of the silent-failure trap: `saved_listings` is protected
- * by a `USING` clause, so deleting somebody else's save returns
- * `{ data: [], error: null }`. Without the row check this would report success.
+ * The clearest case of the silent-failure trap: `saved_listings` is protected by
+ * a `USING` clause, so deleting someone else's save returns
+ * `{ data: [], error: null }` and would report success without the row check.
+ *
+ * Returns `ok(null)` only when a row was actually deleted.
  */
 export async function unsaveListing(
   db: Db,

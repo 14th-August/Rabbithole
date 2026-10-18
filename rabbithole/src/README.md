@@ -138,15 +138,19 @@ React violations, so a broken rule costs the optimisation with no error to say s
 
 ```ts
 /**
- * <What this module is.>
+ * <What this module is, in one line.>
  *
- * Owns: <the responsibility it holds>
- * Does not own: <the neighbouring responsibility it deliberately refuses>
+ * <Two to four lines: what lives in this file, and the one constraint a cold
+ * reader needs to know.>
+ *
+ * Returns: <what callers get back from the exports here.>
  */
 ```
 
-The "does not own" line is the valuable half. It stops files accreting unrelated
-logic and points a cold reader somewhere else.
+Keep it to about four lines of plain English. A header earns its place by being
+read, and a twenty-line essay is scrolled past. When a file holds more than one
+function, each function gets its own short block with its own `Returns:` line
+rather than being described up here.
 
 ---
 

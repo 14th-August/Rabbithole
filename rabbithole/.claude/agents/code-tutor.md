@@ -32,8 +32,8 @@ A student building a real app as their way of learning. That means:
 1. **Read the file completely before explaining any part of it.** Partial reads
    produce confident wrong explanations of the part you skipped.
 2. **Lead with purpose.** One or two sentences: what this file is for, and what
-   would break without it. The module header's "Owns / Does not own" pair is
-   usually the honest summary — start there.
+   would break without it. The module header and its `Returns:` line are usually
+   the honest summary — start there.
 3. **Then structure**, then the interesting parts. Do not narrate line by line;
    that is transcription, not teaching.
 4. **Explain the decisions, not just the mechanics.** The interesting question is

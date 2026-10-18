@@ -1,20 +1,14 @@
 /**
  * Profile screen — `/profile`.
  *
- * Owns: the signed-in student's own account view, and the control that ends
- * their session.
- * Does not own: another student's public profile. That will be a separate route
- * keyed by id, because what a seller shows strangers is not what you show
- * yourself. Nor does it own what signing out *means* — `signOut` in
- * `src/lib/verification/auth.ts` does that, and the root layout decides where
- * it lands you.
+ * The signed-in student's own account view and the control that ends their
+ * session. Another student's public profile will be a separate route keyed by
+ * id, because what a seller shows strangers is not what you show yourself.
+ * `signOut` decides what signing out means and the root layout decides where it
+ * lands you. There is no signed-out state here: the guard on `(tabs)` makes it
+ * unreachable.
  *
- * This screen no longer carries a signed-out state. It used to, from before
- * there was a session to check, and that became unreachable the moment the root
- * layout put `(tabs)` behind a guard: nobody without a session can open this
- * route, so "Sign in to see your listings" was being shown only to people who
- * already had. The old Sign in button also pointed at `/sign-in`, which the same
- * guard makes unreachable from here.
+ * Returns: the Profile tab screen.
  */
 
 import { useState } from "react";
@@ -34,11 +28,8 @@ export default function Profile() {
   const [hasConfirmed, setHasConfirmed] = useState(false);
 
   /**
-   * Sign out, in two taps.
-   *
-   * A single tap is too easy to hit by accident on a screen people open to look
-   * at their own listings, and there is no undo — the next screen is the sign-in
-   * form. The second tap is the confirmation.
+   * Signs out, in two taps. One is too easy to hit by accident on a screen
+   * people open to check their own listings, and there is no undo.
    */
   async function handlePress() {
     if (!hasConfirmed) {

@@ -1,18 +1,13 @@
 /**
  * Shell shared by every authentication route.
  *
- * Owns: the chrome around the auth forms — page background, the screen gutter,
- * the dismiss control, and keeping the form clear of the keyboard.
- * Does not own: the fields inside it, or what submitting one means. Each route
- * supplies its own form, so this file never learns what "signing in" is.
+ * The chrome around the auth forms — page background, screen gutter, dismiss
+ * control, and keeping the form clear of the keyboard. Each route supplies its
+ * own fields, so this file never learns what "signing in" is. `(auth)` adds no
+ * URL segment, so these live at `/sign-in`, not `/auth/sign-in`. There is
+ * deliberately no `index.tsx`: it would compete with `(tabs)/index.tsx` for `/`.
  *
- * Why a group and not a stack of real segments: `(auth)` adds no URL segment, so
- * these screens live at `/sign-in` and `/sign-up` rather than `/auth/sign-in`.
- * The group exists to attach this layout, not to namespace the URLs.
- *
- * There is deliberately no `index.tsx` here. An index would compete with
- * `(tabs)/index.tsx` for `/`, and the tab feed owns that route. `unstable_settings`
- * below is what names the landing screen instead.
+ * Returns: the auth `Stack` inside its shared chrome.
  */
 
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -23,16 +18,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/theme";
 
 /**
- * The screen this group opens on.
+ * The screen this group opens on. Load-bearing, not cosmetic.
  *
- * Load-bearing, not cosmetic. The root layout guards `(tabs)` behind a session,
- * and SDK 57's `Stack.Protected` has no `redirectTo` — a failed guard falls back
- * to the first available screen, which is this group. Without an anchor the
- * router would pick whichever route it happened to see first, so signing out
- * could land on `/verify`.
- *
- * Named once because the back control below also needs to know which screen is
- * the bottom of the stack.
+ * SDK 57's `Stack.Protected` has no `redirectTo`, so a failed guard falls back
+ * to the first available screen in this group. Without an anchor the router
+ * picks whichever it saw first, and signing out could land on `/verify`. Named
+ * once because the back control also needs the bottom of the stack.
  */
 const ANCHOR_SCREEN = "sign-in";
 

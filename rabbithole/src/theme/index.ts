@@ -1,16 +1,13 @@
 /**
- * Theme barrel.
+ * Design tokens.
  *
- * Components should import exactly one thing from here:
+ * Components should import exactly one thing from here: `useTheme`. The raw
+ * token modules are exported for the rare non-component caller — a navigator's
+ * `screenOptions`, or a `StyleSheet.create` block with no hook available. A
+ * static import of `colorsFor` inside a component is almost always a dark-mode
+ * bug. `palette` is deliberately NOT exported: raw ramps stay in this folder.
  *
- *   import { useTheme } from "@/theme";
- *
- * The raw token modules are exported for the rare non-component caller — a
- * navigator's `screenOptions`, a `StyleSheet.create` block that genuinely has no
- * hook available. Reach for `useTheme()` first; a static import of `colorsFor`
- * inside a component is almost always a dark-mode bug.
- *
- * `palette` is deliberately NOT exported. Raw ramps stay inside this folder.
+ * Returns: re-exports only. Import from `@/theme`.
  */
 
 export { ThemeProvider, useTheme, type Theme } from "./useTheme";

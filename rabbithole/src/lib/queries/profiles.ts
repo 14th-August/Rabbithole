@@ -1,30 +1,14 @@
 /**
  * Reading and writing a person.
  *
- * Owns: queries against the two profile VIEWS, and the narrow update a user is
- *   allowed to make to their own row.
- * Does not own: authentication or session state. Signing in is `auth.ts`;
- *   holding the current session is `session.tsx`, which reads its profile
- *   through {@link getMyProfile} rather than touching the database itself.
+ * Every read goes through a VIEW, never `profiles` itself: one row carries public
+ * trust signals, owner-only preferences and server-written counters, and RLS is
+ * row-level so the split is done with COLUMN GRANTS — `select * from profiles`
+ * is denied. `public_profiles` resolves the `show_last_active` rule on the way
+ * out; `my_profile` filters to the caller. Counters have no UPDATE grant at all.
  *
- * WHY THERE IS NO `Profile` ROW TYPE, AND NO QUERY AGAINST `profiles`
- *
- * One `profiles` row carries three different tiers of data: public trust
- * signals, owner-only preferences, and server-written counters. RLS is
- * row-level and cannot separate them, so the separation is done with COLUMN
- * GRANTS instead — and the consequence reaches all the way out here:
- *
- *   select * from profiles   ->   permission denied
- *
- * That is not a bug to work around. It is the privacy model, and it is why
- * every function below reads a view. `public_profiles` resolves the
- * `show_last_active` rule on the way out; `my_profile` is filtered to the
- * caller by its own WHERE clause.
- *
- * The counters are absent from the update path for the same reason:
- * `rating_sum`, `completed_sales` and `status` carry no UPDATE grant at all,
- * so a seller cannot raise their own rating with a crafted request. The
- * database refuses it; this module simply never asks.
+ * Returns: `AsyncResult` throughout. A single-profile read gives `null` data with
+ * no error when the row does not exist — absence is an answer, not a failure.
  */
 
 import type { Db } from "@/lib/supabase";
@@ -37,10 +21,10 @@ import { viewRow, viewRows } from "./rows";
 /**
  * The columns a user may change about themselves.
  *
- * Mirrors the UPDATE grant in the RLS migration exactly. Keeping it a hand
- * written list rather than a `Partial<MyProfile>` is the point: the generated
- * type would happily offer `rating_avg`, the request would be refused, and the
- * mistake would surface as a runtime error instead of a red squiggle.
+ * Mirrors the UPDATE grant exactly. Hand-written rather than
+ * `Partial<MyProfile>` on purpose: the generated type would offer `rating_avg`,
+ * the request would be refused, and the mistake would surface at runtime instead
+ * of as a red squiggle.
  */
 export interface ProfileEdit {
   username: string;
@@ -58,16 +42,14 @@ export interface ProfileEdit {
 /**
  * The signed-in user's own profile, preferences included.
  *
- * @returns `null` data with no error when the row does not exist yet. That is a
- *   real window, not a failure: `auth.users` is written first and the
- *   `handle_new_user` trigger creates the profile immediately after, so a
- *   request landing between the two finds nothing. Treating it as an error
- *   would make a successful signup look broken.
+ * No `.eq("id", …)`: the view's WHERE on `auth.uid()` is the authorization and
+ * cannot return another user's row, so a filter would imply security lives here.
+ *
+ * Returns `null` data with no error when the row does not exist yet — a real
+ * window, since `auth.users` is written before the `handle_new_user` trigger
+ * creates the profile. Treating it as an error makes a good signup look broken.
  */
 export async function getMyProfile(db: Db): Promise<AsyncResult<MyProfile | null>> {
-  // No `.eq("id", …)`. The view's own WHERE clause on auth.uid() is the
-  // authorization and it cannot return another user's row; a filter here would
-  // narrow nothing and imply the security lives in the client.
   const { data, error } = await db.from("my_profile").select("*").maybeSingle();
 
   if (error) return fail(toMessage(error));
@@ -77,12 +59,11 @@ export async function getMyProfile(db: Db): Promise<AsyncResult<MyProfile | null
 /**
  * Someone else's profile, as the rest of campus sees it.
  *
- * `last_active_at` comes back `null` for two different reasons — never active,
- * or active but hidden — and the view does not say which. Callers must not try
- * to tell them apart: "last seen" simply does not render.
+ * `last_active_at` is `null` for two reasons — never active, or active but
+ * hidden — and the view does not say which. Callers must not try to tell them
+ * apart: "last seen" simply does not render.
  *
- * @returns `null` data with no error for an id nobody holds. Absence is an
- *   answer; the screen shows its empty state rather than an error.
+ * Returns `null` data with no error for an id nobody holds.
  */
 export async function getPublicProfile(
   db: Db,
@@ -99,14 +80,12 @@ export async function getPublicProfile(
 }
 
 /**
- * The same, found by the handle people actually see.
+ * The same profile, found by the handle people actually see.
  *
- * A separate query rather than a client-side filter of a fetched list, for the
- * same reason `getTopLevelCategories` is: a distinct product surface gets a
- * distinct server query.
+ * Case-insensitive without asking, because `profiles.username` is `citext` — so
+ * a link to `/profile/Kelp_Quay` finds `kelp_quay`.
  *
- * The match is case-insensitive without asking, because `profiles.username` is
- * `citext` — so a link to `/profile/Kelp_Quay` finds `kelp_quay`.
+ * Returns `null` data with no error for an unknown username.
  */
 export async function getProfileByUsername(
   db: Db,
@@ -123,18 +102,18 @@ export async function getProfileByUsername(
 }
 
 /**
- * Several public profiles at once.
+ * Several public profiles at once — for a list of reviewers or followed sellers,
+ * where one fetch per row would be a request per row.
  *
- * For a list of reviewers or followed sellers, where fetching one profile per
- * row would be a request per row. Not used by the feed — `listing_summaries`
- * already embeds its seller, which is what makes the feed one query.
+ * Not used by the feed: `listing_summaries` already embeds its seller, which is
+ * what makes the feed a single query.
+ *
+ * Returns the matching profiles, or `[]` with no round trip for an empty input.
  */
 export async function getPublicProfiles(
   db: Db,
   userIds: string[],
 ): Promise<AsyncResult<PublicProfile[]>> {
-  // An empty `in()` is a valid query that returns nothing, but it is still a
-  // round trip. The caller almost always has the empty case on screen already.
   if (userIds.length === 0) return ok([]);
 
   const { data, error } = await db
@@ -147,27 +126,24 @@ export async function getPublicProfiles(
 }
 
 /**
- * Change part of your own profile.
+ * Changes part of your own profile.
  *
- * @param userId The caller's own id. This is **narrowing, not security** — the
- *   update policy already restricts the statement to the caller's row, so this
- *   changes nothing about who can be edited. It is here because an `UPDATE`
- *   with no `WHERE` clause is a thing nobody should write, even when a policy
- *   makes it safe.
+ * Returns the refreshed profile. The update cannot return it — `profiles` denies
+ * `select *`, so the write selects one granted column to prove it happened and
+ * the fresh row is read back from `my_profile`.
  *
+ * @param userId The caller's own id. Narrowing, not security: the policy already
+ *   restricts the statement to their row. It is here because an UPDATE with no
+ *   WHERE is a thing nobody should write, even when a policy makes it safe.
  * @param patch Any subset of {@link ProfileEdit}.
- *
- * @returns The refreshed profile. The update itself cannot return it: `profiles`
- *   denies `select *`, so the write selects a single granted column purely to
- *   prove it happened, and the fresh row is read back from `my_profile`.
  */
 export async function updateMyProfile(
   db: Db,
   userId: string,
   patch: Partial<ProfileEdit>,
 ): Promise<AsyncResult<MyProfile | null>> {
-  // `.select("id")`, not `.select()`. The column grants permit reading `id`;
-  // a bare `.select()` expands to every column and is refused outright.
+  // `.select("id")`, not `.select()`. The grants permit reading `id`; a bare
+  // `.select()` expands to every column and is refused outright.
   const { data, error } = await db
     .from("profiles")
     .update(patch)
@@ -175,8 +151,8 @@ export async function updateMyProfile(
     .select("id");
 
   if (error) {
-    // 23505 on this table is one thing and one thing only, and the generic
-    // "That's already there." does not tell a user which field to fix.
+    // 23505 on this table means one thing, and the generic "That's already
+    // there." does not tell the user which field to fix.
     if (error.code === "23505" && patch.username !== undefined) {
       return fail(`${patch.username} is already taken. Try another username.`);
     }
@@ -192,15 +168,16 @@ export async function updateMyProfile(
 }
 
 /**
- * Record that the user is around.
+ * Records that the user is around. Called on app foreground, not per screen.
  *
- * Called on app foreground, not per screen. `last_active_at` is the one column
- * a client may write but never read back: the grants allow UPDATE and deny
- * SELECT, so the value only ever leaves the database through
+ * `last_active_at` is the one column a client may write but never read back: the
+ * grants allow UPDATE and deny SELECT, so the value only leaves through
  * `public_profiles`, and only when `show_last_active` is true.
  *
- * Deliberately returns `AsyncResult<null>` and is safe to ignore. A presence
- * ping that fails is not worth a message on screen, and not worth a retry.
+ * Returns `AsyncResult<null>` and is safe to ignore — a failed presence ping is
+ * not worth a message or a retry. No `requireWrite` here, the exception that
+ * proves the rule: a zero-row update means the session outlived the account,
+ * which the next real request surfaces properly.
  */
 export async function touchLastActive(
   db: Db,
@@ -211,9 +188,6 @@ export async function touchLastActive(
     .update({ last_active_at: new Date().toISOString() })
     .eq("id", userId);
 
-  // No requireWrite here, and that is the exception that proves the rule: there
-  // is nothing to guard. A zero-row update means the session outlived the
-  // account, which the next real request will surface properly.
   if (error) return fail(toMessage(error));
   return ok(null);
 }

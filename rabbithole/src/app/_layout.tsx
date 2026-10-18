@@ -1,14 +1,13 @@
 /**
  * The app shell.
  *
- * Owns: mounting session state, and deciding which half of the route tree is
- *   reachable — the auth flow or the tabs.
- * Does not own: what either half renders. `(auth)/_layout.tsx` and
- *   `(tabs)/_layout.tsx` arrange their own directories.
+ * Mounts session state and decides which half of the route tree is reachable —
+ * the auth flow or the tabs. Each half arranges its own directory. This is the
+ * file `auth.ts` means when it says screens do not navigate after signing in or
+ * out: changing the session flips the guards below and the router swaps groups
+ * on its own, so a manual `router.replace` would race it.
  *
- * This is the file `auth.ts` refers to when it says screens do not navigate after
- * signing in or out. Changing the session flips the guards below, and the router
- * swaps route groups on its own; a manual `router.replace` would race that.
+ * Returns: the root `Stack`, wrapped in the theme and session providers.
  */
 
 import { Stack } from "expo-router";
@@ -21,15 +20,13 @@ import { ThemeProvider, useTheme } from "@/theme";
 /**
  * Mounts session state and the colour scheme once, for the whole app.
  *
- * The app is pinned to **light** for now: a static white page everywhere,
- * regardless of the device's appearance setting. This is a temporary product
- * decision, not the loss of dark mode — every dark token still exists and every
- * component still resolves through `useTheme()`, so re-enabling it is deleting
- * the `scheme` prop below and nothing else.
+ * Pinned to LIGHT for now — a temporary product decision, not the loss of dark
+ * mode: every dark token still exists and every component resolves through
+ * `useTheme()`, so re-enabling it means deleting the `scheme` prop below.
+ * `userInterfaceStyle` in app.json matches, or the OS hands the app dark
+ * keyboards and alerts that look broken against a white page.
  *
- * `userInterfaceStyle` in app.json is set to "light" to match. Without that the
- * OS keeps handing the app dark keyboards, share sheets, and alerts on a phone
- * in dark mode, which looks broken next to a white page.
+ * Returns: the provider tree wrapping the root navigator.
  */
 export default function RootLayout() {
   return (

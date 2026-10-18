@@ -1,18 +1,12 @@
 /**
- * Display formatters barrel.
+ * Display formatters.
  *
- * Owns: re-exporting the pure functions that turn stored values into the strings
- *   a screen shows.
- * Does not own: fetching or validating anything. Nothing here touches Supabase,
- *   and nothing here has state — every function is input in, string out.
+ * Pure functions that turn stored values into the strings a screen shows —
+ * input in, string out. Nothing here touches Supabase and nothing holds state.
+ * `format.ts` encodes three rules from `design-rules.md` that are easy to break
+ * in a component and hard to spot in review, so format here, not there.
  *
- * Import from `@/lib/utils` rather than reaching into individual files:
- *
- *   import { formatPrice, formatRelativeTime } from "@/lib/utils";
- *
- * `format.ts` is not cosmetic — it encodes three rules from `design-rules.md`
- * that are easy to break in a component and hard to spot in review. Format here,
- * not in the component, so there is one place to fix.
+ * Returns: re-exports only. Import from `@/lib/utils`.
  */
 
 export {

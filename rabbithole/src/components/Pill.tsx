@@ -1,18 +1,13 @@
 /**
  * The selectable pill.
  *
- * Owns: how one option in a set of choices looks selected and unselected, and
- *   making that difference legible without relying on colour.
- * Does not own: which option is chosen, or whether a set allows more than one.
- *   Callers hold the selection and pass `isSelected` per pill.
+ * How one option in a set looks selected or unselected, made legible without
+ * relying on colour. Callers hold the selection and pass `isSelected` per pill.
+ * Used for category, condition and campus on Create — three sets on one screen.
+ * Same geometry as `Field`: the border is always present and only recoloured, so
+ * selecting never shifts the row by a pixel.
  *
- * Used for category, condition, and campus on the Create screen — three sets on
- * one screen, which is why this is a component rather than three near-identical
- * blocks.
- *
- * Wears the same geometry as `Field`: a fully-rounded pill whose border is
- * always present and only ever recoloured, so selecting one never shifts the row
- * by a pixel.
+ * Returns: a `Pressable` pill carrying a tick when selected.
  */
 
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -75,12 +70,8 @@ export function Pill({ label, isSelected, onPress, disabled = false, style }: Pi
         style,
       ]}
     >
-      {/*
-        Never colour alone. A filled blue pill and a grey one are the same pill
-        to anyone who cannot tell the two apart, so the tick carries the state a
-        second time — the same reason a status badge says "Reserved" as well as
-        being amber.
-      */}
+      {/* Never colour alone: a filled blue pill and a grey one look identical to
+          anyone who cannot tell them apart, so the tick repeats the state. */}
       {isSelected ? <Ionicons name="checkmark" size={14} color={colors.brand.onBrand} /> : null}
 
       <Text

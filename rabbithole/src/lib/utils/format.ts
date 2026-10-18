@@ -1,28 +1,24 @@
 /**
  * Display formatters for domain values.
  *
- * Owns: turning stored values into the strings the design rules mandate, and
- *   the one inverse — reading a typed price back into cents.
- * Does not own: the values themselves. `src/types` is types only and may hold
- *   no behaviour, which is why these live here rather than beside the types
- *   they format.
- *
- * Several of these encode rules from `.claude/rules/design-rules.md` that are
- * easy to get wrong in a component and impossible to spot in review once they
- * are scattered. Formatting in one place is what makes "Free, never $0.00"
+ * Turns stored values into the strings `design-rules.md` mandates, plus the one
+ * inverse that reads a typed price back into cents. They live here rather than
+ * beside their types because `src/types` is types only and may hold no
+ * behaviour. Formatting in one place is what makes "Free, never $0.00"
  * enforceable rather than aspirational.
+ *
+ * Returns: strings, except `parsePriceToCents` (cents or `null`) and
+ * `formatRating` (a {@link FormattedRating}).
  */
 
 /**
- * Render an integer-cent price.
+ * Renders an integer-cent price.
  *
- * `0` is a legitimate price meaning free, not unpriced, so it renders as
- * "Free" — never "$0.00". Cents are shown only when non-zero, because most
- * campus prices are whole dollars and a column of ".00" is noise.
+ * `0` means free, not unpriced, so it renders as "Free" — never "$0.00". Cents
+ * show only when non-zero, since most campus prices are whole dollars.
  *
- * Thousands separators are always applied and the result is never abbreviated.
- * A feed can hold "$0" and "$4,750" in the same column, and "4.7k" makes a
- * price harder to scan, not easier.
+ * Returns a separated, never-abbreviated string: a feed holds "$0" and "$4,750"
+ * in one column, and "4.7k" makes a price harder to scan.
  */
 export function formatPrice(priceCents: number): string {
   if (priceCents === 0) return "Free";
@@ -40,51 +36,46 @@ export function formatPrice(priceCents: number): string {
 }
 
 /**
- * Read a typed price back into integer cents, or `null` if it is not a price.
+ * Reads a typed price back into integer cents.
  *
- * The inverse of {@link formatPrice}, and deliberately its neighbour: the two
- * have to agree on what "12.50" means, and splitting them across modules is how
- * one drifts into accepting a shape the other never produces.
+ * The inverse of {@link formatPrice} and deliberately its neighbour: the two
+ * must agree on what "12.50" means. Forgiving about input — a leading `$`,
+ * separators and spaces are stripped, because people paste prices. Strict after
+ * that: digits, optionally one or two decimals.
  *
- * Forgiving about what it takes — a leading `$`, thousands separators, and
- * surrounding space all get stripped, because people paste prices as much as
- * they type them. Strict about what it accepts afterwards: digits, optionally
- * followed by one or two decimal places. `"free"`, `"12.345"`, and `"-5"` are
- * all rejected rather than coerced into a number that looks plausible.
- *
- * `"0"` parses to `0`, which is a real price meaning free — callers must not
- * treat a falsy result as "no price given". Only `null` means that.
+ * Returns cents, or `null` when the text is not a price. `"0"` parses to `0`,
+ * a real price meaning free — callers must not read a falsy result as "no price
+ * given". Only `null` means that.
  */
 export function parsePriceToCents(value: string): number | null {
   const cleaned = value.trim().replace(/[$,\s]/g, "");
   if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
 
   // Split rather than multiply. `19.99 * 100` is 1998.9999999999998 in binary
-  // floating point; rounding it happens to be right, but assembling the cents
-  // from the digits themselves does not depend on that being true.
+  // floating point; assembling cents from the digits does not depend on
+  // rounding happening to be right.
   const [whole, fraction = ""] = cleaned.split(".");
   return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
 }
 
-/** What {@link formatRating} returns, so callers can style the two cases differently. */
+/** What {@link formatRating} returns, so callers can style the two cases apart. */
 export interface FormattedRating {
-  /** "New seller", or "4.8" — the numeral alone, so a star icon can sit beside it. */
+  /** "New seller", or "4.8" — the numeral alone, so a star can sit beside it. */
   label: string;
   /** "(12 reviews)", or `null` when there are none to count. */
   detail: string | null;
-  /** `false` for a seller with no reviews, so the UI can omit the star entirely. */
+  /** `false` for a seller with no reviews, so the UI can omit the star. */
   hasReviews: boolean;
 }
 
 /**
- * Render a seller's reputation.
+ * Renders a seller's reputation.
  *
- * `rating_avg === null` means no reviews yet, which is **not** a rating of
- * zero — "0.0 ★" is an accusation, "New seller" is a fact.
+ * `rating_avg === null` means no reviews yet, not a rating of zero — "0.0 star"
+ * is an accusation, "New seller" is a fact. The count always travels with the
+ * average, because "5.0" from one review is true and misleading.
  *
- * The count always travels with the average. "5.0 ★" from a single review is
- * technically true and materially misleading, and showing the count is the
- * cheapest correction available.
+ * Returns a {@link FormattedRating}.
  */
 export function formatRating(
   ratingAvg: number | null,
@@ -107,12 +98,13 @@ const DAY = 24 * HOUR;
 const WEEK = 7 * DAY;
 
 /**
- * Render an ISO 8601 timestamp as a short relative age — "just now", "18m",
- * "3h", "6d", then an absolute date past a week.
+ * Renders an ISO 8601 timestamp as a short relative age.
  *
  * Timestamps are stored and passed as strings, never `Date`, so parsing happens
- * here at render rather than at the model boundary. Past a week the relative
- * form stops being useful ("43d" means nothing), so it switches to a date.
+ * here at render rather than at the model boundary.
+ *
+ * Returns "just now", "18m", "3h", "6d" — then an absolute date past a week,
+ * where the relative form stops meaning anything.
  *
  * @param iso An ISO 8601 timestamp, as every `*_at` field carries.
  * @param now Injectable for tests; defaults to the current time.
@@ -120,8 +112,8 @@ const WEEK = 7 * DAY;
 export function formatRelativeTime(iso: string, now: Date = new Date()): string {
   const elapsed = now.getTime() - new Date(iso).getTime();
 
-  // Clock skew between device and server can make a fresh row look future-dated.
-  // "just now" is a better answer than a negative duration.
+  // Clock skew can make a fresh row look future-dated. "just now" is a better
+  // answer than a negative duration.
   if (elapsed < MINUTE) return "just now";
   if (elapsed < HOUR) return `${Math.floor(elapsed / MINUTE)}m`;
   if (elapsed < DAY) return `${Math.floor(elapsed / HOUR)}h`;
@@ -143,11 +135,13 @@ const CONDITION_LABELS: Record<string, string> = {
 };
 
 /**
- * Render a condition value as a label.
+ * Renders a condition value as a label.
  *
- * Deliberately plain. "Like new" means something different for a jacket than
- * for a bike, and the data cannot support a category-specific promise — so the
- * label states the seller's claim and adds nothing to it.
+ * Deliberately plain: "like new" means something different for a jacket than a
+ * bike, and the data cannot support a category-specific promise, so the label
+ * states the seller's claim and adds nothing.
+ *
+ * Returns the label, or the raw value if unmapped.
  */
 export function formatCondition(condition: string): string {
   return CONDITION_LABELS[condition] ?? condition;

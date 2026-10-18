@@ -1,16 +1,13 @@
 /**
  * A validation message belonging to one input.
  *
- * Owns: how a single field reports what is wrong with it.
- * Does not own: deciding that anything is wrong, or which field owns the
- *   problem. The screen holds that, because only the screen knows what it
- *   asked for.
+ * How a single field reports what is wrong with it. The screen decides that
+ * something IS wrong and which field owns it, because only the screen knows what
+ * it asked for. Distinct from the banner above the submit button: a banner
+ * answers "why did this form not go through", this answers "what do I fix, and
+ * where", so it sits against its field and nothing else is marked.
  *
- * Distinct from the error banner above the submit button, and the split is the
- * point. A banner answers "why did this form not go through" — a wrong
- * password, an unreachable server, a rejected signup. This answers "what do I
- * fix, and where", so it sits against the field it belongs to and nothing else
- * is marked.
+ * Returns: an inline icon-and-text row, announced to screen readers on appearance.
  */
 
 import Ionicons from "@expo/vector-icons/Ionicons";

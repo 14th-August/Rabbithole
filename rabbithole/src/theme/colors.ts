@@ -1,18 +1,14 @@
 /**
  * Semantic colour tokens for light and dark.
  *
- * Owns: the mapping from raw ramps to meanings, once per scheme.
- * Does not own: which scheme is active. That is `useTheme()`'s job.
+ * Maps raw ramps to meanings, once per scheme; `useTheme()` decides which scheme
+ * is active. Tokens are named for their role, never their appearance —
+ * `text.secondary`, not `grey600` — because the role is stable across schemes
+ * even though the hex is not. `Colors` is the contract: adding a token breaks
+ * compilation until BOTH schemes define it, since a one-scheme token is a
+ * dark-mode bug that ships.
  *
- * Tokens are named for their role, never their appearance — `text.secondary`,
- * not `grey600`. This is the whole reason dark mode works: the role is stable
- * across schemes even though the hex is not. A token called `grey600` has nowhere
- * to go when the background turns black.
- *
- * The two palettes below are exhaustive and parallel: `Colors` is the contract,
- * and adding a token to it breaks compilation until *both* schemes define it.
- * That is deliberate — a token that exists in only one scheme is a dark-mode bug
- * that ships.
+ * Returns: `colorsFor(scheme)` returns that scheme's complete token set.
  */
 
 import type { ListingStatus } from "@/types";
@@ -64,29 +60,25 @@ export interface Colors {
     /**
      * Text/icons placed ON `brand.default`.
      *
-     * White in light mode, but near-black in dark mode: the dark scheme lifts the
-     * brand blue to `blue[300]` for legibility against a dark page, and white text
-     * on `#66A6FF` fails contrast badly. This token existing is what stops that
-     * bug — a hardcoded `color: "#fff"` on a primary button would ship it.
+     * White in light mode, near-black in dark: the dark scheme lifts the brand to
+     * `blue[300]`, and white on `#66A6FF` fails contrast badly. This token is
+     * what stops a hardcoded `color: "#fff"` shipping that bug.
      */
     onBrand: string;
     /**
-     * The launch background.
+     * The launch background — the one token identical in both schemes.
      *
-     * The one token that is deliberately **identical in both schemes**. A native
-     * splash screen is painted by the OS from a fixed colour in `app.json`, long
-     * before React or `useColorScheme` exist, so anything rendered on top of it
-     * has to match that one value or the handover flickers.
+     * The OS paints the native splash from a fixed colour in `app.json` before
+     * React exists, so anything on top must match it or the handover flickers.
      */
     launch: string;
     /**
-     * Foreground on {@link launch} — the spinner, and any text beside it.
+     * Foreground on {@link launch} — the spinner and any text beside it.
      *
-     * Fixed in both schemes for the same reason `launch` is. `onBrand` cannot be
-     * used here: it is near-black in dark mode, which is correct on the lifted
-     * `blue[300]` of a dark-mode button but invisible on the launch screen's
-     * fixed `blue[500]`. It is also simply the wrong colour — the rabbit on that
-     * screen is white, and the spinner beside it should match.
+     * Fixed in both schemes for the same reason. `onBrand` cannot be used: it is
+     * near-black in dark mode, correct on a lifted `blue[300]` button but
+     * invisible on the launch screen's fixed `blue[500]`, and the rabbit there is
+     * white anyway.
      */
     onLaunch: string;
   };

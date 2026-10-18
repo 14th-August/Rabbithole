@@ -60,8 +60,8 @@ architectural decision here, not a detail — see `.claude/rules/technical-defau
 
 ## Method
 
-1. Read the code under test completely, and its module header — the "Does not own"
-   line tells you where the boundary of the test is.
+1. Read the code under test completely, and its module header — the `Returns:`
+   line and each function's own block tell you where the boundary of the test is.
 2. Identify the edge cases **from the fixtures**, which were written for exactly
    this purpose and annotate the case each one covers.
 3. Write the failing test first where practical, and confirm it fails for the reason

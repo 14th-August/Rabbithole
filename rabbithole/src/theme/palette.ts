@@ -1,24 +1,15 @@
 /**
- * Raw colour ramps.
+ * Raw colour ramps — the literal hex values the app may use.
  *
- * Owns: the literal hex values the app is allowed to use.
- * Does not own: what any of them *mean*. Nothing outside `src/theme/` should
- *   import this file — screens ask for `colors.text.primary`, never `blue[500]`.
+ * What they MEAN is `colors.ts`. Nothing outside `src/theme` imports this file:
+ * a screen reaching for `neutral[200]` has silently opted out of dark mode,
+ * because that value is a light-mode border and a dark-mode nothing. Ramps are a
+ * palette, not a design; meanings are what flip between schemes.
  *
- * Why the indirection: a ramp is a palette, not a design. The moment a screen
- * reaches for `neutral[200]` directly, that screen has silently opted out of dark
- * mode, because `neutral[200]` is a light-mode border and a dark-mode nothing.
- * `colors.ts` is where ramps become meanings, and meanings are what flip.
- *
- * The blue ramp is built around `#0165F2` (step 500), sampled from the app icon.
- * The rabbit logo is the first colour decision anyone actually made here, so the
- * ramp follows it rather than the other way round. `app.json` mirrors step 500 for
- * the splash and adaptive-icon backgrounds.
- *
- * Worth knowing why this changed: the previous brand blue (`#208AEF`, inherited
- * from the Expo starter template) put white-on-brand at 3.53:1 — under the 4.5:1
- * this project targets for body text. `#0165F2` is darker and reaches 5.07:1, so
- * primary buttons stopped failing contrast as a side effect of adopting the logo.
+ * Returns: the `palette` object. Blue step 500 is `#0165F2`, sampled from the app
+ * icon and mirrored in `app.json`. It replaced the Expo starter's `#208AEF`,
+ * which put white-on-brand at 3.53:1 — under the 4.5:1 this project targets.
+ * `#0165F2` reaches 5.07:1, so primary buttons stopped failing contrast.
  */
 
 export const palette = {

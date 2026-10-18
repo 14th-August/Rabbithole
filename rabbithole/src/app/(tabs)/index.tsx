@@ -1,9 +1,11 @@
 /**
  * Discover screen — `/`.
  *
- * Owns: the campus feed. A themed placeholder until the feed is built.
- * Does not own: listing data. That arrives through `getFeed` in
- * `src/lib/queries/listings.ts`, never by calling `supabase` here.
+ * The campus feed, a themed placeholder until the feed is built. Listing data
+ * arrives through `getFeed` in `src/lib/queries/listings.ts`, never by calling
+ * `supabase` here.
+ *
+ * Returns: the Discover tab screen.
  */
 
 import { StyleSheet, Text, View } from "react-native";

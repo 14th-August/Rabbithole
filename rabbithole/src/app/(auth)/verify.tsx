@@ -1,19 +1,13 @@
 /**
  * Verify screen — `/verify`.
  *
- * Owns: entering the 6-digit code from the confirmation email, and asking for a
- * new one.
- * Does not own: sending the code. `signUp` in `src/lib/verification/auth.ts`
- * did that; this screen only completes what it started. Nor the geometry of its
- * own field and buttons, which are `Field` and `Button` in `src/components`.
+ * Entering the 6-digit code from the confirmation email, and asking for a new
+ * one. `signUp` sent the code; this only completes what it started. Reached from
+ * sign-up with the address as a route param. A user here has an account but NO
+ * session — email confirmation is on, so `signUp` returns a user and no tokens,
+ * which is why verification lives on the unauthenticated side of the app.
  *
- * Reached from sign-up with the address as a route param. A user here has an
- * account but **no session** — email confirmation is on, so `signUp` returns a
- * user and no tokens. That is why verification lives on the unauthenticated side
- * of the app alongside sign-in, rather than somewhere behind a session check.
- *
- * Matches `sign-in.tsx` and `sign-up.tsx`: same logo at the same derived size,
- * same spacing rhythm, same pill geometry.
+ * Returns: the verify screen.
  */
 
 import { Image } from "expo-image";
@@ -76,11 +70,9 @@ export default function Verify() {
   const logoSize = spacing.xxxl * 2;
 
   /**
-   * Keep only digits, and never more than the code length.
-   *
-   * Codes get pasted out of mail clients with a trailing space often enough that
-   * stripping here is the difference between "works" and an invalid-token error
-   * on a code that was correct.
+   * Keeps only digits, and never more than the code length. Codes get pasted
+   * from mail clients with trailing spaces often enough that stripping here is
+   * the difference between working and an invalid-token error on a good code.
    */
   function handleChangeCode(next: string) {
     setCode(next.replace(/[^0-9]/g, "").slice(0, CODE_LENGTH));

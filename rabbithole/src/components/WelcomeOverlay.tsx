@@ -1,18 +1,14 @@
 /**
  * The one-time greeting a new account sees before the app.
  *
- * Owns: deciding whether this user is owed a welcome, showing it, and getting
- *   out of the way.
- * Does not own: who is signed in, or when an account became new. `welcome.ts`
- *   holds that flag and `auth.ts` sets it.
- *
- * Renders over the tabs rather than as a route. It is not a place in the app —
- * there is nothing to navigate to or back from — so giving it a URL would put a
+ * Decides whether this user is owed a welcome, shows it, then gets out of the
+ * way. `welcome.ts` holds the flag and `auth.ts` sets it. Rendered over the tabs
+ * rather than as a route: it is not a place in the app, so a URL would put a
  * decoration in the route table and let a deep link reach it out of context.
+ * Painted `brand.launch` so the whole first run is one continuous blue surface.
  *
- * Painted `brand.launch`, the same fixed blue as the native splash and the boot
- * screen. That makes the whole first-run sequence one continuous blue surface
- * rather than three separate ones that happen to be similar.
+ * Returns: a fading overlay for a newly confirmed account, and `null` for
+ * everyone else — so it is safe to mount unconditionally wherever a session exists.
  */
 
 import { Image } from "expo-image";
@@ -64,10 +60,9 @@ interface WelcomeOverlayProps {
 export function WelcomeOverlay({ userId, name }: WelcomeOverlayProps) {
   const { colors, spacing, typography, layout } = useTheme();
 
-  // Read in a lazy initialiser rather than an effect. It runs exactly once, on
-  // the first render, which is what a one-shot flag wants — and it keeps the
-  // read out of an effect body, where calling setState is a Rules of React
-  // violation the compiler bails on silently.
+  // A lazy initialiser, not an effect: it runs exactly once, which is what a
+  // one-shot flag wants, and keeps setState out of an effect body where the
+  // compiler bails on the Rules of React violation silently.
   const [isOwed] = useState(() => consumeWelcome(userId));
   const [isMounted, setIsMounted] = useState(isOwed);
 

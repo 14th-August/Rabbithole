@@ -1,41 +1,35 @@
 /**
  * Turning database failures into sentences a person can read.
  *
- * Owns: the mapping from Postgres and PostgREST error codes to user-facing copy,
- *   and the guard for writes that fail without erroring.
- * Does not own: deciding what to do about a failure. Query modules return the
- *   sentence; screens decide whether to show it inline, in a banner, or retry.
+ * Maps Postgres and PostgREST codes to user-facing copy, wraps results as
+ * `AsyncResult`, and guards writes that RLS blocks silently. A raw string here
+ * would be `duplicate key value violates unique constraint "saved_listings_pkey"`
+ * — useless to a student and a schema leak. Screens decide what to do with the
+ * sentence; this only produces it.
  *
- * `design-rules.md` says an error state must "say what failed and offer a retry.
- * Never a raw error string." A raw string here would be `duplicate key value
- * violates unique constraint "saved_listings_pkey"`, which tells a student
- * nothing and leaks the schema. This module is where that stops.
+ * Returns: `toMessage` returns a sentence. `ok`/`fail` wrap an `AsyncResult`.
+ * `requireRows` and `requireWrite` return a failure when nothing was written.
  */
 
 import type { PostgrestError } from "@supabase/supabase-js";
 
 import type { AsyncResult } from "@/lib/hooks";
 
-/**
- * Postgres and PostgREST codes we can say something specific about.
- *
- * Anything not listed falls through to a generic sentence rather than exposing
- * the driver's own wording — see {@link toMessage}.
- */
+/** Codes we can say something specific about. Unlisted ones fall through. */
 const MESSAGES: Record<string, string> = {
-  // Postgres: insufficient_privilege. An RLS policy refused the write. Note this
-  // only fires for INSERT and for UPDATE failing a WITH CHECK — see requireRows.
+  // insufficient_privilege. An RLS policy refused the write — INSERT, or UPDATE
+  // failing a WITH CHECK. See requireRows for the case that does not error.
   "42501": "You don't have permission to do that.",
 
-  // unique_violation. Usually a duplicate save, a second review on one order, a
-  // username someone just claimed, or a second request on a listing.
+  // unique_violation. A duplicate save, a second review on one order, a username
+  // someone just claimed, or a second request on a listing.
   "23505": "That's already there.",
 
   // foreign_key_violation. The row it pointed at is gone.
   "23503": "That item no longer exists.",
 
-  // check_violation. A CHECK constraint rejected the values — a price below zero,
-  // a title over 200 characters, a rating outside 1–5.
+  // check_violation. A price below zero, a title over 200 chars, a rating
+  // outside 1-5.
   "23514": "Some of those details aren't valid. Check the form and try again.",
 
   // PostgREST: .single() matched zero rows or more than one.
@@ -46,51 +40,44 @@ const MESSAGES: Record<string, string> = {
 };
 
 /**
- * Convert a PostgREST error into a sentence.
+ * Converts a PostgREST error into a sentence.
+ *
+ * Returns mapped copy where we have it, else a generic line — guessing at copy
+ * for an unmapped code is worse than admitting we have not handled it. The
+ * original always reaches the console so it stays debuggable.
  *
  * @param error The error `supabase-js` returned. It never throws, so this is
- *   always something you read off the result rather than catch.
+ *   read off the result rather than caught.
  */
 export function toMessage(error: PostgrestError): string {
   const known = MESSAGES[error.code];
   if (known !== undefined) return known;
 
-  // Deliberately generic. An unmapped code means we have not thought about this
-  // failure yet, and guessing at copy is worse than admitting that — but the
-  // original still goes to the console so it is debuggable.
   console.warn(`Unmapped database error ${error.code}: ${error.message}`);
   return "Something went wrong. Please try again.";
 }
 
-/** Wrap a failure as an {@link AsyncResult}. */
+/** Wraps a failure. Returns `{ data: null, error: message }`. */
 export function fail<T>(message: string): AsyncResult<T> {
   return { data: null, error: message };
 }
 
-/** Wrap a success as an {@link AsyncResult}. */
+/** Wraps a success. Returns `{ data, error: null }`. */
 export function ok<T>(data: T): AsyncResult<T> {
   return { data, error: null };
 }
 
 /**
- * Guard a write that RLS can block **silently**.
+ * Guards a write that RLS can block silently — the most important function here,
+ * because the failure it catches produces no error at all.
  *
- * This is the single most important function in this folder, because the failure
- * it catches produces no error at all.
+ * RLS does not deny a row you may not touch, it makes the row invisible. So an
+ * UPDATE or DELETE filtered out by a `USING` clause matches zero rows and
+ * succeeds: `error === null` does not mean the write happened. Only `WITH CHECK`
+ * violations raise `42501`. Every update and delete therefore chains `.select()`
+ * and passes the rows here.
  *
- * RLS does not deny a row you may not touch — it makes the row *invisible*. So an
- * `UPDATE` or `DELETE` filtered out by a `USING` clause matches zero rows and
- * succeeds. `error === null` does not mean the write happened:
- *
- * | Operation | Blocked by | Result |
- * | --- | --- | --- |
- * | INSERT | `WITH CHECK` | error `42501` |
- * | UPDATE | `WITH CHECK` | error `42501` |
- * | UPDATE / DELETE | `USING` | **`{ data: [], error: null }`** |
- *
- * Every update and delete therefore chains `.select()` and passes the rows here.
- * A write that silently does nothing while the UI reports success is worse than
- * one that fails loudly.
+ * Returns the first row written, or a failure when nothing was.
  *
  * @param rows What `.select()` returned from the write.
  * @param message What to tell the user when nothing was written.
@@ -101,14 +88,13 @@ export function requireRows<T>(rows: T[] | null, message: string): AsyncResult<T
 }
 
 /**
- * {@link requireRows} for a write whose row the caller does not want.
+ * {@link requireRows} for a write whose row the caller does not want — unsaving
+ * a listing, leaving a conversation, deleting a photo.
  *
- * Same silent-failure guard, different return type. Unsaving a listing, leaving
- * a conversation, deleting a photo — all need to know the write *happened*, and
- * none has any use for the row that came back.
+ * Exists because `requireRows` resolves to `AsyncResult<T>` and these call sites
+ * want `AsyncResult<null>`, so without it each hand-rolls the length check.
  *
- * Without this the caller hand-rolls the length check, because `requireRows`
- * resolves to `AsyncResult<T>` and the call site wants `AsyncResult<null>`.
+ * Returns `ok(null)` on a real write, or a failure when nothing was written.
  *
  * @param rows What `.select()` returned from the write.
  * @param message What to tell the user when nothing was written.

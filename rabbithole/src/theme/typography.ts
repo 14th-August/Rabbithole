@@ -1,17 +1,15 @@
 /**
- * Type scale.
+ * Type scale — font size, line height, weight and letter spacing per text role.
  *
- * Owns: font size, line height, weight, and letter spacing for every text role.
- * Does not own: colour. Compose them — `[theme.typography.body, { color: c.text.primary }]`.
- *   Keeping colour out is what lets one scale serve both schemes.
+ * Colour is deliberately absent: compose it, as
+ * `[typography.body, { color: colors.text.primary }]`. That is what lets one
+ * scale serve both schemes. Each variant is a complete `TextStyle`, spreadable
+ * into a style array. Line heights are explicit because React Native's default
+ * leading differs across iOS and Android, which is how a layout drifts.
  *
- * Each variant is a complete `TextStyle`, spreadable straight into a style array.
- * Line heights are explicit on purpose: React Native's default leading differs
- * between iOS and Android, so omitting it is how a layout drifts across platforms.
- *
- * No custom font is loaded yet, so these resolve to the system face (SF on iOS,
- * Roboto on Android). `expo-font` is already a dependency for when that changes;
- * adding a family here is then a one-file edit.
+ * Returns: the `typography` object, plus `TypographyVariant` as the union of its
+ * names. No custom font is loaded yet, so these resolve to the system face;
+ * `expo-font` is already a dependency for when that changes.
  */
 
 import type { TextStyle } from "react-native";
@@ -44,10 +42,9 @@ export const typography = {
   /**
    * Prices get their own variant rather than borrowing `title3`.
    *
-   * Price is the single most-scanned element on a marketplace card; tying it to a
-   * general heading style means a later typographic tweak to headings silently
-   * changes scanning behaviour across the whole feed. Tabular figures would be
-   * ideal here — revisit when a custom font lands.
+   * Price is the most-scanned element on a card, so tying it to a general
+   * heading style means a later tweak to headings silently changes scanning
+   * across the feed. Tabular figures would be ideal — revisit with a custom font.
    */
   price: { fontSize: 18, lineHeight: 22, fontWeight: "700", letterSpacing: -0.2 },
   /** Price on a compact card. */

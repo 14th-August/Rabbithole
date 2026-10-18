@@ -1,12 +1,12 @@
 /**
- * Spacing, radii, and layout constants.
+ * Spacing, radii, and layout constants — every number describing distance.
  *
- * Owns: every number that describes distance in the UI.
- * Does not own: colour or type. Those are siblings in this folder.
- *
- * A 4pt base grid. The constraint is the feature — arbitrary values are what make
+ * A 4pt base grid. The constraint is the feature: arbitrary values are what make
  * a layout feel subtly wrong without anyone being able to say why. If a design
- * needs 18, the answer is 16 or 24, not a new token.
+ * needs 18, the answer is 16 or 24, not a new token. Colour and type are
+ * siblings in this folder.
+ *
+ * Returns: three frozen objects — `spacing`, `radius`, `layout`.
  */
 
 export const spacing = {
@@ -48,7 +48,7 @@ export const layout = {
   /**
    * 44 — the minimum square a finger can reliably hit (Apple HIG; Material says
    * 48). Small icon buttons must pad or `hitSlop` up to this even when the glyph
-   * is 20pt. This is an accessibility floor, not a style preference.
+   * is 20pt. An accessibility floor, not a style preference.
    */
   tapTargetMin: 44,
 
@@ -63,11 +63,11 @@ export const layout = {
    *
    * Must equal `imageWidth` in the `expo-splash-screen` config in app.json. The
    * OS draws the native splash from that value before any JavaScript runs, so a
-   * mismatch here makes the mark visibly jump at the handover. One of the very
-   * few numbers in this file that is pinned to something outside it.
+   * mismatch makes the mark visibly jump at the handover. One of the very few
+   * numbers here pinned to something outside this file.
    */
   splashMarkWidth: 76,
 
-  /** Listing cover images. 4:3 reads better than square for books and furniture. */
+  /** Listing cover images. 4:3 survives photo diversity better than square. */
   listingAspectRatio: 4 / 3,
 } as const;

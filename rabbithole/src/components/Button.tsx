@@ -1,13 +1,12 @@
 /**
  * The pill button.
  *
- * Owns: the two button shapes the app uses, their disabled and in-flight
- *   treatments, and what a screen reader is told about both.
- * Does not own: what the press does, or whether it is allowed to happen. Callers
- *   own `onPress` and compute `disabled`.
+ * The two button shapes the app uses, their disabled and in-flight treatments,
+ * and what a screen reader is told about each. Callers own `onPress` and compute
+ * `disabled`. Extracted from `sign-in`, `sign-up` and `verify`, which repeated
+ * the same tap-target block four times between them.
  *
- * Extracted from `sign-in`, `sign-up`, and `verify`, which repeated the same
- * tap-target block four times between them.
+ * Returns: a `Pressable` pill — filled for `primary`, text-only for `ghost`.
  */
 
 import {
@@ -94,9 +93,8 @@ export function Button({
       disabled={isInert}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
-      // `busy` is what makes the wait audible. `disabled` alone reads as
-      // "unavailable", which is a different and misleading thing to announce
-      // about a button that is working.
+      // `busy` makes the wait audible. `disabled` alone announces
+      // "unavailable", which is misleading for a button that is working.
       accessibilityState={{ disabled: isInert, busy: isPending }}
       hitSlop={isPrimary ? undefined : layout.hitSlop}
       style={[
@@ -105,9 +103,8 @@ export function Button({
           minHeight: layout.tapTargetMin,
           borderRadius: radius.pill,
           backgroundColor: isPrimary ? colors.brand.default : "transparent",
-          // The filled pill dims as a whole. A text-only button has no fill to
-          // dim, so it recolours instead — halving the opacity of small text
-          // fails contrast rather than reading as unavailable.
+          // The filled pill dims whole; a text-only button recolours instead,
+          // since halving small text's opacity fails contrast.
           opacity: isPrimary && isInert ? 0.5 : 1,
         },
         isPrimary ? styles.fullWidth : null,

@@ -1,36 +1,19 @@
 /**
  * Accumulates a paged list as a screen scrolls it.
  *
- * Owns: the page cursor, the accumulated items, whether more exist, and keeping
- *   a stale page from landing in a list it no longer belongs to.
- * Does not own: how a page is fetched. The query decides that, and already does
- *   — `getFeed` takes `{ page }` and returns at most `FEED_PAGE_SIZE` rows.
+ * Holds the page cursor, the accumulated items, whether more exist, and the
+ * guard that keeps a stale page out of a list it no longer belongs to. The query
+ * decides how a page is fetched. For the screens one response cannot hold —
+ * Browse, Saved, the message inbox; use `useQuery` for the rest.
  *
- * Sibling to {@link useQuery}, which is the right hook for a read that fits in
- * one response. This one is for the three screens that will not: Browse, Saved
- * and the message inbox.
+ * Returns: a {@link PagedState} — `items`, `isLoading`, `isLoadingMore`,
+ * `error`, `hasMore`, `loadMore`, `refresh`.
  *
- * HOW EXHAUSTION IS DECIDED
- *
- * A short page means the end. That is the contract `listings.ts` already set —
- * it exposes `FEED_PAGE_SIZE` and no `count`, with the note that "offset paging
- * is fine at one campus; keyset pagination is correct at scale but the
- * crossover is a long way off".
- *
- * So `hasMore` is inferred, not reported, and it has one knowable flaw: a final
- * page that happens to be exactly `pageSize` long leaves `hasMore` true, and
- * the next request returns empty. The cost is one wasted request at the bottom
- * of a list; the alternative is a `count` on every page, which Postgres pays
- * for by counting the whole filtered set each time. The wasted request is
- * cheaper, and it resolves itself.
- *
- * OFFSET PAGING AND A MOVING FEED
- *
- * `bumped_at desc` is not stable while people are posting: a listing renewed
- * between page 0 and page 1 shifts every row down, so an item can appear twice
- * or be skipped. At one campus with twelve listings this is invisible. It is
- * the first thing keyset pagination fixes when it stops being invisible, and
- * this hook is where that change would land.
+ * Two known trade-offs, both deliberate. `hasMore` is inferred from a short
+ * page, so a final page of exactly `pageSize` costs one wasted request — cheaper
+ * than a `count` on every page. And `bumped_at desc` is not stable while people
+ * post, so an item can repeat or be skipped; invisible at one campus, and this
+ * hook is where keyset pagination would land when it stops being invisible.
  */
 
 import { useEffect, useState } from "react";
@@ -45,7 +28,7 @@ export interface PagedState<T> {
   /** True until the FIRST page lands, and during a `refresh`. Drives the skeleton. */
   isLoading: boolean;
 
-  /** True while a further page is in flight. Drives the footer spinner, not the skeleton. */
+  /** True while a further page is in flight. Drives the footer spinner. */
   isLoadingMore: boolean;
 
   /** A sentence to show the user, or `null` when nothing has gone wrong. */
@@ -55,9 +38,9 @@ export interface PagedState<T> {
   hasMore: boolean;
 
   /**
-   * Load the next page. Safe to call from `onEndReached`, which React Native
-   * fires more than once per scroll — calls are ignored while a page is already
-   * in flight, or once the list is exhausted.
+   * Load the next page. Safe to call from `onEndReached`, which fires more than
+   * once per scroll — calls are ignored while a page is in flight or the list is
+   * exhausted.
    */
   loadMore: () => void;
 
@@ -66,17 +49,17 @@ export interface PagedState<T> {
 }
 
 /**
- * Accumulate pages from a 0-indexed paged query.
+ * Accumulates pages from a 0-indexed paged query.
  *
- * @param fetchPage Called with a 0-based page number. Bind the client and any
- *   filters at the call site: `usePaged((page) => getFeed(supabase, { page, campus }), [campus])`.
+ * Returns a {@link PagedState} for the list.
  *
+ * @param fetchPage Called with a 0-based page number. Bind the client and
+ *   filters at the call site.
  * @param deps Reset to page zero when these change. Every filter the query
- *   closes over **must** be listed, or changing a filter will append its
- *   results to the previous filter's list.
- *
- * @param pageSize Must match what the query actually returns per page. Pass
- *   `FEED_PAGE_SIZE` rather than a literal, so the two cannot drift.
+ *   closes over must be listed, or changing a filter appends its results to the
+ *   previous filter's list.
+ * @param pageSize Must match what the query returns per page. Pass
+ *   `FEED_PAGE_SIZE` rather than a literal so the two cannot drift.
  *
  * @example
  * ```tsx
@@ -103,18 +86,16 @@ export function usePaged<T>(
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  // Bumped by refresh() to re-run page zero. A counter, not a boolean, so two
-  // refreshes in a row both fire.
+  // A counter, not a boolean, so two refreshes in a row both fire.
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    // Page zero replaces the list; later pages append. Tracked here rather than
-    // read from `page` inside the response, because by then it may have moved.
+    // Captured here rather than read from `page` in the response, where it may
+    // already have moved. Page zero replaces the list; later pages append.
     const isFirstPage = page === 0;
 
-    // A stale page must never be appended: the deps may have changed, or the
-    // user may have pulled to refresh, and a response from the previous filter
-    // landing in the new list is a bug that looks like data corruption.
+    // A response from the previous filter landing in the new list looks like
+    // data corruption, so a stale page must never be appended.
     let active = true;
 
     if (isFirstPage) setIsLoading(true);
@@ -130,9 +111,8 @@ export function usePaged<T>(
 
       if (result.error !== null) {
         setError(result.error);
-        // The already-loaded pages stay on screen. A failure fetching page
-        // three should not blank out the two that worked — the error renders
-        // in the list footer beside a retry.
+        // Loaded pages stay on screen — a failure on page three should not
+        // blank the two that worked. The error renders in the footer.
         return;
       }
 
@@ -145,13 +125,12 @@ export function usePaged<T>(
       active = false;
     };
     // `fetchPage` is deliberately absent — a fresh closure every render would
-    // re-fetch forever. The caller's `deps` are the contract. See useQuery.ts.
+    // refetch forever. The caller's `deps` are the contract. See useQuery.ts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, page, attempt]);
 
-  // Changing a filter must start over, not append to the previous filter's
-  // results. Separate from the fetching effect so it cannot race it: this sets
-  // page back to 0, and that change is what re-runs the fetch.
+  // Separate from the fetching effect so it cannot race it: this sets page back
+  // to 0, and that change is what re-runs the fetch.
   useEffect(() => {
     setItems([]);
     setHasMore(true);
@@ -160,8 +139,8 @@ export function usePaged<T>(
   }, deps);
 
   function loadMore() {
-    // onEndReached fires repeatedly while a long list settles, so this guard is
-    // not defensive — without it one scroll requests the same page four times.
+    // Not defensive: onEndReached fires repeatedly while a long list settles, so
+    // without this guard one scroll requests the same page four times.
     if (isLoading || isLoadingMore || !hasMore || error !== null) return;
     setPage((n) => n + 1);
   }
@@ -173,7 +152,6 @@ export function usePaged<T>(
     else setPage(0);
   }
 
-  // No useCallback: `reactCompiler` is enabled in app.json and hand-memoising
-  // here would defeat it. See .claude/rules/technical-defaults.md.
+  // No useCallback: `reactCompiler` is enabled and hand-memoising defeats it.
   return { items, isLoading, isLoadingMore, error, hasMore, loadMore, refresh };
 }

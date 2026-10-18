@@ -1,15 +1,14 @@
 /**
  * Create-form checks that run before a listing is worth sending.
  *
- * Owns: deciding whether a draft listing is complete and within limits.
- * Does not own: enforcing any of it. Every limit here mirrors a CHECK constraint
- *   in `supabase/migrations/20260918132138_enums_and_tables.sql`, which is the
- *   thing that actually enforces them. This layer exists so a 200-character
- *   title costs a keystroke instead of a round trip.
+ * Decides whether a draft is complete and within limits. Every limit mirrors a
+ * CHECK constraint in `..._enums_and_tables.sql`, which is what actually
+ * enforces them — this exists so a 200-character title costs a keystroke instead
+ * of a round trip. Sign-up's equivalent is `verification/validation.ts`, kept
+ * apart because a listing draft has nothing to do with authentication.
  *
- * Sign-up's equivalent lives in `src/lib/verification/validation.ts`. The two
- * were one file and are deliberately apart: nothing about a listing draft has
- * anything to do with authentication, and only this half needs a formatter.
+ * Returns: `validateListing` returns the first {@link ListingProblem}, or `null`
+ * when the draft is ready to send.
  */
 
 import { parsePriceToCents } from "@/lib/utils";
@@ -18,10 +17,9 @@ import type { Campus, ListingCondition } from "@/types";
 /**
  * A listing as the Create form holds it, before anything is parsed.
  *
- * `price` is the raw text of the field rather than a number, because "is this
- * even a price" is one of the questions {@link validateListing} answers. The
- * two selections are nullable because "not chosen yet" is a real state the form
- * starts in, and is distinct from any valid value.
+ * `price` is raw field text rather than a number, because "is this even a price"
+ * is one of the questions {@link validateListing} answers. The selections are
+ * nullable because "not chosen yet" is a real state, distinct from any value.
  */
 export interface ListingDraft {
   title: string;
@@ -32,10 +30,9 @@ export interface ListingDraft {
   /**
    * Required, unlike the pickup note beside it.
    *
-   * It was optional while campus was only a prefix on `pickup_hint`. It is now
-   * its own NOT NULL column and the Browse feed filters on it, so a listing
-   * without one would not be invisible to *some* people — it would be
-   * unpostable.
+   * It was optional while campus was a prefix on `pickup_hint`. It is now its
+   * own NOT NULL column and Browse filters on it, so a listing without one is
+   * unpostable rather than merely hard to find.
    */
   campus: Campus | null;
 
@@ -61,23 +58,15 @@ export interface ListingProblem {
 }
 
 /**
- * The first thing wrong with a draft, or `null` when it is ready to send.
+ * Checks a draft against the same limits the database enforces.
  *
- * Every limit below mirrors a CHECK constraint in
- * `supabase/migrations/20260918132138_enums_and_tables.sql` — title 1–200,
- * description ≤4000, `pickup_hint` ≤200, `price_cents >= 0`. They are duplicated
- * here on purpose: the database is the thing that actually enforces them, and
- * this exists so a 200-character title costs a keystroke rather than a round
- * trip. If a constraint changes there, it has to change here too.
+ * Returns only the FIRST problem, in the order the fields appear on screen, so
+ * the user is told about the topmost thing to fix rather than an arbitrary one.
+ * `null` means ready to send.
  *
- * Returns only the **first** problem, in the order the fields appear on screen,
- * so the message the user is shown is about the topmost thing they need to fix
- * rather than an arbitrary one.
- *
- * Photos are deliberately not checked. `design-rules.md` is explicit that the
- * Create flow "should encourage photos without blocking on them" — a listing
- * with no photo is degraded, not invalid, and plenty of cheap items never get
- * one.
+ * Photos are deliberately not checked: `design-rules.md` says Create should
+ * encourage photos without blocking on them. A photoless listing is degraded,
+ * not invalid.
  */
 export function validateListing(draft: ListingDraft): ListingProblem | null {
   if (draft.title.trim() === "") {
@@ -88,8 +77,8 @@ export function validateListing(draft: ListingDraft): ListingProblem | null {
     return { field: "title", message: `Titles are limited to ${TITLE_MAX} characters.` };
   }
 
-  // `0` is a price, so this cannot test for falsiness — only `null` means the
-  // field was empty or unreadable.
+  // `0` is a price, so this cannot test falsiness — only `null` means the field
+  // was empty or unreadable.
   if (parsePriceToCents(draft.price) === null) {
     return { field: "price", message: "Enter a price. Put 0 if you're giving it away." };
   }

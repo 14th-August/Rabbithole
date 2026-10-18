@@ -1,20 +1,14 @@
 /**
  * Create screen — `/create`.
  *
- * Owns: the posting form, the values typed into it, the photos chosen for it,
- *   and what to show when one of them is wrong.
- * Does not own: saving anything. This pass assembles the row and logs it —
- *   `createListing` in `src/lib/queries/listings.ts` is where it will go, and it
- *   already takes exactly the shape built here. Nor what may be listed: the
- *   guidelines shown near the bottom are content policy, not this file's rule.
+ * The posting form: the values typed into it, the photos chosen for it, and what
+ * to show when one is wrong. It assembles the row and logs it — `createListing`
+ * is where it will go, and already takes this exact shape. A single scrolling
+ * form rather than a wizard, since step-by-step only buys something past about
+ * ten fields. It presents as an overlay but stays a tab route, because the tab
+ * bar must remain mounted for "switch tabs to leave" to work.
  *
- * A single scrolling form rather than a wizard. Every marketplace surveyed uses
- * one screen for a listing this short; step-by-step flows start appearing around
- * ten fields, where chunking buys something.
- *
- * It presents as an overlay — its own header, no tab header — but it is still a
- * tab route, which is deliberate. The tab bar has to stay mounted for "switch
- * tabs to leave" to work, and a real modal would cover it.
+ * Returns: the Create tab screen.
  */
 
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -53,11 +47,9 @@ import { useTheme } from "@/theme";
 import type { Campus, Category, ListingCondition, TablesInsert } from "@/types";
 
 /**
- * Photos per listing.
- *
- * Three is a product choice, not a schema one — `listing_images.position` has no
- * ceiling. Enough to show an item from more than one angle without turning the
- * form into an upload queue.
+ * Photos per listing. A product choice, not a schema one —
+ * `listing_images.position` has no ceiling. Enough for more than one angle
+ * without turning the form into an upload queue.
  */
 const MAX_PHOTOS = 3;
 
@@ -67,14 +59,10 @@ const CONDITIONS: ListingCondition[] = ["new", "like_new", "good", "fair", "poor
 /**
  * VIU's campuses, as stored values paired with their labels.
  *
- * Still hard-coded, and still for the same reason — they are a fact about the
- * university, and a `campuses` table to model four unchanging strings would be
- * schema for its own sake. What changed is where the value goes: campus is now
- * its own `NOT NULL` enum column that the Browse feed filters on, not a prefix
- * glued onto the front of `pickup_hint`.
- *
- * Typed against {@link Campus}, so adding a member to the database enum without
- * adding it here is a compile error rather than a campus nobody can pick.
+ * Hard-coded because they are a fact about the university — a table for four
+ * unchanging strings would be schema for its own sake. Typed against
+ * {@link Campus}, so adding a member to the database enum without adding it
+ * here is a compile error rather than a campus nobody can pick.
  */
 const CAMPUSES: { value: Campus; label: string }[] = [
   { value: "nanaimo", label: "Nanaimo" },
@@ -99,11 +87,9 @@ export default function Create() {
     description: "",
   });
 
-  // The chosen top-level category is tracked separately from the value that will
-  // be stored. Only Textbooks has children, so for four of the five the two are
-  // the same — but the parent is what decides whether a second row appears, and
-  // deriving it back out of a possibly-child id every render is worse than
-  // keeping it.
+  // Tracked separately from the stored value: the parent decides whether a
+  // second row appears, and deriving it back out of a possibly-child id every
+  // render is worse than keeping it.
   const [parentId, setParentId] = useState<string | null>(null);
 
   const [photos, setPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
@@ -173,12 +159,11 @@ export default function Create() {
   }
 
   /**
-   * Remember where a section sits, so a failed submit can scroll to it.
+   * Remembers where a section sits, so a failed submit can scroll to it.
    *
-   * Takes the value rather than returning a handler. A factory would have to be
-   * *called* during render to produce each `onLayout`, which hands the ref to a
-   * function at render time — the React Compiler rejects that, and rightly: a
-   * ref read during render is a value the render cannot depend on.
+   * Takes the value rather than returning a handler: a factory would be called
+   * during render to produce each `onLayout`, and the React Compiler rejects
+   * handing a ref to a function at render time.
    */
   function setOffset(field: ListingFieldName, y: number) {
     fieldOffsets.current[field] = y;
@@ -277,10 +262,8 @@ export default function Create() {
     // price, and a null category or condition, so these three are settled.
     const priceCents = parsePriceToCents(form.price) as number;
 
-    // No longer prefixed with the campus. That was a workaround for campus
-    // having nowhere to live; it now has its own column, and duplicating it
-    // into the free-text line would put the same fact in two places that can
-    // disagree after an edit.
+    // Not prefixed with the campus any more: it has its own column now, and
+    // duplicating it here would put one fact in two places that can disagree.
     const pickupHint = form.pickupHint.trim();
 
     await submit.run({
@@ -635,8 +618,7 @@ export default function Create() {
 /**
  * The label above a field or pill row.
  *
- * Local to this screen on purpose — it is one styled `Text`, and the components
- * README is explicit that something used once stays where it is used.
+ * Local on purpose: one styled `Text`, used once, so it stays where it is used.
  */
 function SectionLabel({
   children,

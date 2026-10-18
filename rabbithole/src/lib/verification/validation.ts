@@ -1,80 +1,53 @@
 /**
- * Sign-up and sign-in form checks that run before a request is worth making.
+ * Form checks for the sign-up and sign-in screens.
  *
- * Owns: deciding whether an email address or username someone typed is worth
- *   sending to Supabase.
- * Does not own: enforcing any of it. Every rule here is also enforced server
- *   side — the campus domain by the `before_user_created` auth hook, the
- *   password by GoTrue. This layer exists so a typo costs a round trip instead
- *   of a wait, and it is a keyboard convenience, never a gate.
+ * Three checks live here: email shape, campus domain, and username rules. All
+ * are synchronous so they can run on every keystroke without a network call.
+ * Supabase enforces the same rules server-side, so these only save a wasted
+ * round trip — they are a convenience, never the gate.
  *
- * `docs/backend/auth-flow.md` names this "Layer 1 — the client regex" and is
- * blunt about the limit: anyone can curl the Auth REST endpoint and skip the app
- * entirely. Nothing here may be the only thing standing between a bad value and
- * the database.
+ * Returns: `isValidEmail` and `isCampusEmail` return booleans.
+ * `validateUsername` returns an error sentence, or `null` when the shape is ok.
  */
 
 /**
- * Whether a string is shaped like an email address.
+ * Whether a string is shaped like an email: text, `@`, text, dot, text.
  *
- * Deliberately permissive: something, an `@`, something, a dot, something. The
- * full RFC 5322 grammar is famously not expressible as a readable regex, and
- * every attempt to approximate it rejects addresses that genuinely work —
- * plus-tags, apostrophes, new TLDs. Being strict here fails real students to
- * catch hypothetical ones.
+ * Permissive on purpose. Stricter regexes reject addresses that really work —
+ * plus-tags, apostrophes, new TLDs — and fail real students to catch
+ * hypothetical ones.
  *
- * What it does catch is the mistake that actually happens: no `@` at all,
- * nothing before it, nothing after it, or a domain with no dot.
+ * Returns `true` if the shape is plausible.
  */
 export function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-/**
- * The domain Rabbithole accepts.
- *
- * Note the dot: `my.viu.ca` is a **subdomain**. `@viu.ca` is the employee
- * domain and is deliberately excluded — this is a student marketplace. The same
- * distinction is made in the auth hook migration, and getting it wrong does not
- * fail loudly; it produces an app no real student can register for.
- */
+/** Students only: `my.viu.ca` is the student subdomain, `@viu.ca` is staff. */
 const CAMPUS_EMAIL = /@my\.viu\.ca$/i;
 
 /**
- * Whether an address belongs to a student.
+ * Whether an address belongs to a VIU student.
  *
- * Only worth calling once {@link isValidEmail} passes — on its own it would
- * accept `@my.viu.ca` with nothing in front of it.
+ * Only worth calling once {@link isValidEmail} passes — on its own it accepts
+ * `@my.viu.ca` with nothing in front of it.
+ *
+ * Returns `true` for a student address.
  */
 export function isCampusEmail(value: string): boolean {
   return CAMPUS_EMAIL.test(value.trim());
 }
 
-// ---------------------------------------------------------------------------
-// Usernames
-// ---------------------------------------------------------------------------
-
-/**
- * Letters, digits and underscores, 3–20 characters.
- *
- * Identical to the CHECK on `profiles.username` and to the pattern inside
- * `is_username_available()`. Three copies is two too many, but the alternatives
- * are a round trip for every keystroke or a regex shipped from the server, and
- * a drift between them fails loudly: the database refuses the insert.
- */
+/** Mirrors the CHECK on `profiles.username` and `is_username_available()`. */
 const USERNAME = /^[A-Za-z0-9_]{3,20}$/;
 
 /**
- * Why a username is unacceptable, or `null` if its *shape* is fine.
+ * Checks the shape of a username, not whether it is taken — that needs the
+ * database, via `isUsernameAvailable` in `auth.ts`.
  *
- * Shape only. Whether it is already taken is a question for
- * `isUsernameAvailable` in `src/lib/verification/auth.ts`, because only the
- * database can answer it — and this function stays synchronous so it can run on
- * every keystroke without a network call.
- *
- * Returns a sentence rather than a boolean: "3 to 20 characters" and "letters,
- * numbers and underscores" are different problems, and a single "invalid
- * username" makes the user guess which one they have.
+ * Returns a sentence naming the specific problem, or `null` if the shape is
+ * fine. A sentence rather than a boolean so the user is not left guessing which
+ * rule they broke.
  */
 export function validateUsername(value: string): string | null {
   const username = value.trim();

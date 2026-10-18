@@ -1,14 +1,13 @@
 /**
  * Runs one async action and tracks whether it is in flight.
  *
- * Owns: the `isPending` / `error` bookkeeping that every submit button needs.
- * Does not own: what the action does, or what happens on success. Callers decide
- *   both — this only reports how the attempt went.
+ * Holds the `isPending` / `error` bookkeeping every submit button needs, plus
+ * the `AsyncResult` contract the whole query layer speaks. Callers decide what
+ * the action does and what happens on success; this only reports how it went.
+ * Without it each screen retypes the same six lines and they drift.
  *
- * Without this, every screen retypes the same six lines: set pending, clear the
- * old error, await, read the error, unset pending. Six lines is not much, but
- * repeated across screens they drift, and the one that forgets to clear the old
- * error shows a stale message after a successful retry.
+ * Returns: an {@link AsyncState} — `run`, `isPending`, `error`, `clearError`.
+ * `run` resolves to the data on success, `null` on failure.
  */
 
 import { useState } from "react";
@@ -16,13 +15,10 @@ import { useState } from "react";
 /**
  * The shape every action passed to {@link useAsync} must return.
  *
- * Deliberately mirrors what `supabase-js` gives back — `{ data, error }`, never a
- * thrown exception — so wrapping a Supabase call is a matter of translating the
- * error, not restructuring the result. `error` is a **sentence to show a person**,
- * not a code: turning a raw API string into readable English is the wrapper's job,
- * done before it ever reaches a screen.
- *
- * Exactly one side is ever set. `error === null` means it worked.
+ * Mirrors what `supabase-js` gives back — `{ data, error }`, never a thrown
+ * exception — so wrapping a Supabase call means translating the error, not
+ * restructuring the result. `error` is a sentence to show a person, not a code.
+ * Exactly one side is ever set; `error === null` means it worked.
  */
 export interface AsyncResult<T> {
   data: T | null;
@@ -32,8 +28,8 @@ export interface AsyncResult<T> {
 /** What {@link useAsync} hands back to a screen. */
 export interface AsyncState<Args extends unknown[], T> {
   /**
-   * Run the action. Resolves to the data on success, or `null` on failure —
-   * so a caller can branch on the return value without re-reading `error`:
+   * Run the action. Resolves to the data on success, `null` on failure, so a
+   * caller can branch on the return value without re-reading `error`:
    *
    * ```ts
    * const session = await submit.run({ email, password });
@@ -53,10 +49,11 @@ export interface AsyncState<Args extends unknown[], T> {
 }
 
 /**
- * Wrap an async action in loading and error state.
+ * Wraps an async action in loading and error state.
  *
- * @param action Any function returning an {@link AsyncResult}. The auth actions
- *   in `src/lib/auth.ts` are the first users; query modules will be the next.
+ * Returns an {@link AsyncState} bound to `action`.
+ *
+ * @param action Any function returning an {@link AsyncResult}.
  *
  * @example
  * ```ts
@@ -74,8 +71,8 @@ export function useAsync<Args extends unknown[], T>(
 
   async function run(...args: Args): Promise<T | null> {
     setIsPending(true);
-    // Clear the previous error up front. Leaving it on screen during a retry
-    // makes a successful second attempt look like it also failed.
+    // Clear the old error up front, or a successful retry renders beneath a
+    // stale message and looks like it failed too.
     setError(null);
 
     const result = await action(...args);
@@ -94,7 +91,6 @@ export function useAsync<Args extends unknown[], T>(
     setError(null);
   }
 
-  // No useCallback: `reactCompiler` is enabled in app.json and hand-memoising
-  // here would defeat it. See .claude/rules/technical-defaults.md.
+  // No useCallback: `reactCompiler` is enabled and hand-memoising defeats it.
   return { run, isPending, error, clearError };
 }

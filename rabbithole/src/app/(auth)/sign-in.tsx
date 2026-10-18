@@ -1,15 +1,13 @@
 /**
  * Sign-in screen — `/sign-in`.
  *
- * Owns: the sign-in form, the values typed into it, and what to show while the
- * request is in flight.
- * Does not own: authenticating. That is `signIn` in
- * `src/lib/verification/auth.ts`. Nor navigation once it succeeds — see
- * `handleSubmit`. Nor the geometry of its own fields and button, which are
- * `Field` and `Button` in `src/components`.
+ * The sign-in form, the values typed into it, and what to show while the request
+ * is in flight. Authenticating is `signIn` in `verification/auth.ts`; navigation
+ * after success is handled by the root layout, not here. Field and button
+ * geometry come from `@/components`. This is the first screen a signed-out user
+ * sees — the root layout guards `(tabs)`, and `(auth)/_layout.tsx` anchors here.
  *
- * This is the first screen a signed-out user sees. The root layout guards
- * `(tabs)` behind a session, and `(auth)/_layout.tsx` anchors this group here.
+ * Returns: the sign-in screen.
  */
 
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -61,15 +59,10 @@ export default function SignIn() {
   const isComplete = form.email.trim() !== "" && form.password !== "";
   const canSubmit = isComplete && !submit.isPending;
 
-  // Two different questions, answered in two different places. `submit.error`
-  // is form-level — a wrong password, an unreachable server — and goes in the
-  // banner. `fieldError` is "fix this input", and renders against that input.
-  //
-  // Note the server error deliberately marks NO field. GoTrue returns
-  // `invalid_credentials` for a wrong password and an unknown address alike, on
-  // purpose, so that sign-in cannot be used to discover which addresses have
-  // accounts. Reddening both inputs would claim to know something the API
-  // refused to say; reddening one would be a guess.
+  // `submit.error` is form-level and goes in the banner; `fieldError` is "fix
+  // this input" and renders against it. The server error marks NO field on
+  // purpose: GoTrue returns `invalid_credentials` for a wrong password and an
+  // unknown address alike, so sign-in cannot reveal which addresses exist.
 
   /** Update one field, and clear any error so a retry starts clean. */
   function updateField(patch: Partial<SignInForm>) {

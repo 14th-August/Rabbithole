@@ -1,18 +1,13 @@
 /**
  * The five-tab bar.
  *
- * Owns: which tabs exist, their order, their icons, and their tinting.
- * Does not own: what any tab renders. Each screen is its own file.
+ * Which tabs exist, their order, icons and tinting; each screen is its own file.
+ * `Tabs` comes from `expo-router/js-tabs` — importing it from `expo-router` is
+ * deprecated in SDK 57. The selected tab FILLS: every icon has an outline and a
+ * solid form and `focused` picks between them, because weight reads at a glance
+ * where hue does not and survives a colour-vision difference.
  *
- * Tabs comes from `expo-router/js-tabs` — importing it from `expo-router`
- * directly is deprecated in SDK 57.
- *
- * **The selected tab fills.** Every icon has an outline form and a solid form;
- * `focused` picks between them. Colour alone was doing all the work before, and
- * a tint shift is the weakest signal a tab bar can give — weight reads at a
- * glance where hue does not, and it is the half that survives a colour-vision
- * difference. `tabBarActiveTintColor` still supplies the blue, so the render
- * prop never sets a colour itself; it only chooses the glyph.
+ * Returns: the `Tabs` navigator arranging the five primary tabs.
  */
 
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -59,10 +54,9 @@ export default function TabsLayout() {
         name="create"
         options={{
           title: "Create Post",
-          // The only tab that draws its own header. It needs a close button and
-          // a Publish action styled from tokens, which the native header cannot
-          // carry — and hiding it is what makes the screen read as an overlay
-          // rather than another tab page.
+          // The only tab that draws its own header: it needs a close button
+          // and a token-styled Publish action the native header cannot carry,
+          // and hiding it makes the screen read as an overlay.
           headerShown: false,
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons name={focused ? "add-circle" : "add-circle-outline"} size={size} color={color} />
