@@ -3,9 +3,10 @@
  *
  * Owns: the sign-in form, the values typed into it, and what to show while the
  * request is in flight.
- * Does not own: authenticating. That is `signIn` in `src/lib/auth.ts`. Nor
- * navigation once it succeeds — see `handleSubmit`. Nor the geometry of its own
- * fields and button, which are `Field` and `Button` in `src/components`.
+ * Does not own: authenticating. That is `signIn` in
+ * `src/lib/verification/auth.ts`. Nor navigation once it succeeds — see
+ * `handleSubmit`. Nor the geometry of its own fields and button, which are
+ * `Field` and `Button` in `src/components`.
  *
  * This is the first screen a signed-out user sees. The root layout guards
  * `(tabs)` behind a session, and `(auth)/_layout.tsx` anchors this group here.
@@ -25,10 +26,9 @@ import logo from "@/assets/images/logo-round.png";
 import { Button } from "@/components/Button";
 import { Field } from "@/components/Field";
 import { FieldError } from "@/components/FieldError";
-import { signIn } from "@/lib/auth";
+import { isValidEmail, signIn } from "@/lib/verification";
 import { supabase } from "@/lib/supabase";
-import { useAsync } from "@/lib/useAsync";
-import { isValidEmail } from "@/lib/validation";
+import { useAsync } from "@/lib/hooks";
 import { useTheme } from "@/theme";
 
 /**

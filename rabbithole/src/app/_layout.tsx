@@ -15,7 +15,7 @@ import { Stack } from "expo-router";
 
 import { BootScreen } from "@/components/BootScreen";
 import { WelcomeOverlay } from "@/components/WelcomeOverlay";
-import { SessionProvider, useSession } from "@/lib/session";
+import { SessionProvider, useSession } from "@/lib/verification";
 import { ThemeProvider, useTheme } from "@/theme";
 
 /**

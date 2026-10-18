@@ -4,8 +4,8 @@
  * Owns: the pill geometry every text input in the app wears, the error colouring
  *   that marks one as wrong, and placing the message underneath it.
  * Does not own: deciding what is wrong. Callers validate and pass a sentence —
- *   see `src/lib/validation.ts`. Nor the label above a field; screens lay their
- *   own copy out.
+ *   see `src/lib/verification/validation.ts`. Nor the label above a field;
+ *   screens lay their own copy out.
  *
  * Extracted from `sign-in`, `sign-up`, and `verify`, which each defined the same
  * `fieldStyle` object literal. Three copies is how two of them quietly drift by a

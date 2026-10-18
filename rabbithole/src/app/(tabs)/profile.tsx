@@ -6,7 +6,8 @@
  * Does not own: another student's public profile. That will be a separate route
  * keyed by id, because what a seller shows strangers is not what you show
  * yourself. Nor does it own what signing out *means* — `signOut` in
- * `src/lib/auth.ts` does that, and the root layout decides where it lands you.
+ * `src/lib/verification/auth.ts` does that, and the root layout decides where
+ * it lands you.
  *
  * This screen no longer carries a signed-out state. It used to, from before
  * there was a session to check, and that became unreachable the moment the root
@@ -19,10 +20,9 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { signOut } from "@/lib/auth";
-import { useSession } from "@/lib/session";
+import { signOut, useSession } from "@/lib/verification";
 import { supabase } from "@/lib/supabase";
-import { useAsync } from "@/lib/useAsync";
+import { useAsync } from "@/lib/hooks";
 import { useTheme } from "@/theme";
 
 /** The Profile tab. */

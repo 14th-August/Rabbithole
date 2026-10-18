@@ -27,7 +27,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import mark from "@/assets/images/splash-icon.png";
-import { consumeWelcome } from "@/lib/welcome";
+import { consumeWelcome } from "@/lib/verification";
 import { useTheme } from "@/theme";
 
 /**

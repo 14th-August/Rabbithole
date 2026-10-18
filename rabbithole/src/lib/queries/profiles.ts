@@ -28,7 +28,7 @@
  */
 
 import type { Db } from "@/lib/supabase";
-import type { AsyncResult } from "@/lib/useAsync";
+import type { AsyncResult } from "@/lib/hooks";
 import type { Campus, MyProfile, PublicProfile } from "@/types";
 
 import { fail, ok, requireWrite, toMessage } from "./errors";

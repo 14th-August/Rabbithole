@@ -35,7 +35,7 @@
 
 import { useEffect, useState } from "react";
 
-import type { AsyncResult } from "@/lib/useAsync";
+import type { AsyncResult } from "./useAsync";
 
 /** What {@link usePaged} hands back to a screen. */
 export interface PagedState<T> {

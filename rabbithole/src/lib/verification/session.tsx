@@ -18,9 +18,9 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 import type { MyProfile } from "@/types";
 
-import { getMyProfile } from "./queries/profiles";
+import { getMyProfile } from "../queries/profiles";
 import { isSessionStale } from "./sessionAge";
-import { supabase } from "./supabase";
+import { supabase } from "../supabase";
 
 /** What {@link useSession} returns. */
 interface SessionState {

@@ -3,10 +3,11 @@
  *
  * Owns: the sign-up form, the values typed into it, whether the two passwords
  * agree, and what to show while the request is in flight.
- * Does not own: creating the account. That is `signUp` in `src/lib/auth.ts`.
- * Nor enforcing the VIU rule — the gate is a server-side auth hook, so this
- * screen only relays whatever it says. Nor the geometry of its own fields and
- * button, which are `Field` and `Button` in `src/components`.
+ * Does not own: creating the account. That is `signUp` in
+ * `src/lib/verification/auth.ts`. Nor enforcing the VIU rule — the gate is a
+ * server-side auth hook, so this screen only relays whatever it says. Nor the
+ * geometry of its own fields and button, which are `Field` and `Button` in
+ * `src/components`.
  *
  * Deliberately mirrors `sign-in.tsx` element for element — same logo at the same
  * size, same spacing rhythm, same pill fields and button — so moving between the
@@ -25,10 +26,15 @@ import logo from "@/assets/images/logo-round.png";
 import { Button } from "@/components/Button";
 import { Field } from "@/components/Field";
 import { FieldError } from "@/components/FieldError";
-import { isUsernameAvailable, signUp } from "@/lib/auth";
+import {
+  isCampusEmail,
+  isUsernameAvailable,
+  isValidEmail,
+  signUp,
+  validateUsername,
+} from "@/lib/verification";
 import { supabase } from "@/lib/supabase";
-import { useAsync } from "@/lib/useAsync";
-import { isCampusEmail, isValidEmail, validateUsername } from "@/lib/validation";
+import { useAsync } from "@/lib/hooks";
 import { useTheme } from "@/theme";
 
 /**

@@ -59,8 +59,8 @@ when it genuinely does not apply, and say so rather than silently dropping it.
 
 1. **Read before advising.** Read the files the feature touches, completely.
    Partial reads produce confident wrong advice about the part you skipped.
-2. **Check what exists first.** `src/lib/format.ts`, `src/lib/storage.ts`,
-   `src/lib/useAsync.ts`, `src/theme/`, `src/types/` — this project's most common
+2. **Check what exists first.** `src/lib/utils/format.ts`, `src/lib/storage.ts`,
+   `src/lib/hooks/useAsync.ts`, `src/theme/`, `src/types/` — this project's most common
    failure is proposing something already written.
 3. **Read the rules that bind the answer.** `.claude/rules/technical-defaults.md`
    for layering and conventions, `design-rules.md` when UI is involved,

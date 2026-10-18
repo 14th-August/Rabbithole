@@ -10,7 +10,7 @@
  */
 
 import type { Db } from "@/lib/supabase";
-import type { AsyncResult } from "@/lib/useAsync";
+import type { AsyncResult } from "@/lib/hooks";
 import type { Category } from "@/types";
 
 import { fail, ok, toMessage } from "./errors";

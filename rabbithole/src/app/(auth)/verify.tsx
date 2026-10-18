@@ -3,9 +3,9 @@
  *
  * Owns: entering the 6-digit code from the confirmation email, and asking for a
  * new one.
- * Does not own: sending the code. `signUp` in `src/lib/auth.ts` did that; this
- * screen only completes what it started. Nor the geometry of its own field and
- * buttons, which are `Field` and `Button` in `src/components`.
+ * Does not own: sending the code. `signUp` in `src/lib/verification/auth.ts`
+ * did that; this screen only completes what it started. Nor the geometry of its
+ * own field and buttons, which are `Field` and `Button` in `src/components`.
  *
  * Reached from sign-up with the address as a route param. A user here has an
  * account but **no session** — email confirmation is on, so `signUp` returns a
@@ -24,9 +24,9 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import logo from "@/assets/images/logo-round.png";
 import { Button } from "@/components/Button";
 import { Field } from "@/components/Field";
-import { RESEND_COOLDOWN_SECONDS, confirmSignUp, resendSignUpCode } from "@/lib/auth";
+import { RESEND_COOLDOWN_SECONDS, confirmSignUp, resendSignUpCode } from "@/lib/verification";
 import { supabase } from "@/lib/supabase";
-import { useAsync } from "@/lib/useAsync";
+import { useAsync } from "@/lib/hooks";
 import { useTheme } from "@/theme";
 
 /** Digits in a confirmation code. Set by `otp_length` in `supabase/config.toml`. */

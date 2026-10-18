@@ -208,7 +208,7 @@ Navigation is file-based via [`expo-router`](https://docs.expo.dev/router/introd
 
 The root layout wraps each group in `Stack.Protected`, so a signed-out user can only reach `(auth)` and a signed-in user can only reach `(tabs)`. Screens never navigate after signing in or out — changing the session flips the guard and the router swaps groups on its own.
 
-A session also expires after **five days** without a manual sign-in. A Supabase refresh token renews itself indefinitely, so that policy is tracked separately in `src/lib/sessionAge.ts`.
+A session also expires after **five days** without a manual sign-in. A Supabase refresh token renews itself indefinitely, so that policy is tracked separately in `src/lib/verification/sessionAge.ts`.
 
 The tab bar is built with `Tabs` imported from **`expo-router/js-tabs`**. Importing `Tabs` from `expo-router` directly is deprecated in SDK 57. Icons come from `@expo/vector-icons` (Ionicons).
 

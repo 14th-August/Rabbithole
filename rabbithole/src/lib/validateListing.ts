@@ -1,100 +1,19 @@
 /**
- * Form checks that run before a request is worth making.
+ * Create-form checks that run before a listing is worth sending.
  *
- * Owns: deciding whether what someone typed is worth sending.
- * Does not own: enforcing any of it. Every rule here is also enforced server
- *   side — the campus domain by the `before_user_created` auth hook, the
- *   password by GoTrue. This layer exists so a typo costs a round trip instead
- *   of a wait, and it is a keyboard convenience, never a gate.
+ * Owns: deciding whether a draft listing is complete and within limits.
+ * Does not own: enforcing any of it. Every limit here mirrors a CHECK constraint
+ *   in `supabase/migrations/20260918132138_enums_and_tables.sql`, which is the
+ *   thing that actually enforces them. This layer exists so a 200-character
+ *   title costs a keystroke instead of a round trip.
  *
- * `docs/backend/auth-flow.md` names this "Layer 1 — the client regex" and is
- * blunt about the limit: anyone can curl the Auth REST endpoint and skip the app
- * entirely. Nothing here may be the only thing standing between a bad value and
- * the database.
+ * Sign-up's equivalent lives in `src/lib/verification/validation.ts`. The two
+ * were one file and are deliberately apart: nothing about a listing draft has
+ * anything to do with authentication, and only this half needs a formatter.
  */
 
-import { parsePriceToCents } from "@/lib/format";
+import { parsePriceToCents } from "@/lib/utils";
 import type { Campus, ListingCondition } from "@/types";
-
-/**
- * Whether a string is shaped like an email address.
- *
- * Deliberately permissive: something, an `@`, something, a dot, something. The
- * full RFC 5322 grammar is famously not expressible as a readable regex, and
- * every attempt to approximate it rejects addresses that genuinely work —
- * plus-tags, apostrophes, new TLDs. Being strict here fails real students to
- * catch hypothetical ones.
- *
- * What it does catch is the mistake that actually happens: no `@` at all,
- * nothing before it, nothing after it, or a domain with no dot.
- */
-export function isValidEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
-/**
- * The domain Rabbithole accepts.
- *
- * Note the dot: `my.viu.ca` is a **subdomain**. `@viu.ca` is the employee
- * domain and is deliberately excluded — this is a student marketplace. The same
- * distinction is made in the auth hook migration, and getting it wrong does not
- * fail loudly; it produces an app no real student can register for.
- */
-const CAMPUS_EMAIL = /@my\.viu\.ca$/i;
-
-/**
- * Whether an address belongs to a student.
- *
- * Only worth calling once {@link isValidEmail} passes — on its own it would
- * accept `@my.viu.ca` with nothing in front of it.
- */
-export function isCampusEmail(value: string): boolean {
-  return CAMPUS_EMAIL.test(value.trim());
-}
-
-// ---------------------------------------------------------------------------
-// Usernames
-// ---------------------------------------------------------------------------
-
-/**
- * Letters, digits and underscores, 3–20 characters.
- *
- * Identical to the CHECK on `profiles.username` and to the pattern inside
- * `is_username_available()`. Three copies is two too many, but the alternatives
- * are a round trip for every keystroke or a regex shipped from the server, and
- * a drift between them fails loudly: the database refuses the insert.
- */
-const USERNAME = /^[A-Za-z0-9_]{3,20}$/;
-
-/**
- * Why a username is unacceptable, or `null` if its *shape* is fine.
- *
- * Shape only. Whether it is already taken is a question for
- * `isUsernameAvailable` in `src/lib/auth.ts`, because only the database can
- * answer it — and this function stays synchronous so it can run on every
- * keystroke without a network call.
- *
- * Returns a sentence rather than a boolean: "3 to 20 characters" and "letters,
- * numbers and underscores" are different problems, and a single "invalid
- * username" makes the user guess which one they have.
- */
-export function validateUsername(value: string): string | null {
-  const username = value.trim();
-
-  if (username === "") return "Pick a username.";
-  if (username.length < 3) return "Usernames are at least 3 characters.";
-  if (username.length > 20) return "Usernames are at most 20 characters.";
-
-  if (!USERNAME.test(username)) {
-    return "Letters, numbers and underscores only.";
-  }
-
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// Listings
-// ---------------------------------------------------------------------------
 
 /**
  * A listing as the Create form holds it, before anything is parsed.

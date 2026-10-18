@@ -23,7 +23,7 @@ a codebase stops being separable into parts.
 | --- | --- | --- |
 | `app/` | The route table. Every file in it is a URL. | below |
 | `components/` | Shared UI. **Not created yet.** | — |
-| `lib/` | The Supabase client, queries, session, formatters | [`lib/README.md`](lib/README.md) |
+| `lib/` | The Supabase client, queries, authentication, hooks, formatters | [`lib/README.md`](lib/README.md) |
 | `theme/` | Light and dark design tokens | [`theme/README.md`](theme/README.md) |
 | `types/` | Domain types — hand-written, plus the generated schema | [`types/README.md`](types/README.md) |
 
@@ -165,9 +165,9 @@ is what will let caching, retries, or a query library be added later without
 touching a screen.
 
 **`types/` holds no behaviour.** No formatters, no validators, no fetchers. That
-is why `lib/format.ts` exists: rules like "`price_cents: 0` renders Free" and
-"`rating_avg: null` renders New seller" need a home, and a component is the wrong
-one — format in three components and you get three slightly different
+is why `lib/utils/format.ts` exists: rules like "`price_cents: 0` renders Free"
+and "`rating_avg: null` renders New seller" need a home, and a component is the
+wrong one — format in three components and you get three slightly different
 implementations of the same rule.
 
 ## Where the fixtures went

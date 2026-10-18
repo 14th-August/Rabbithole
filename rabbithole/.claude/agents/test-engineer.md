@@ -32,7 +32,7 @@ architectural decision here, not a detail — see `.claude/rules/technical-defau
 ## What to test, in priority order
 
 1. **Pure logic and derivations.** Highest value, cheapest to write, no rendering.
-   Right now that is every formatter in `src/lib/format.ts` and the error mapping in
+   Right now that is every formatter in `src/lib/utils/format.ts` and the error mapping in
    `src/lib/queries/errors.ts`. `requireRows` is the one that matters most: it guards
    a write that RLS blocks *silently*, and a bug there reports success on a write
    that did nothing.

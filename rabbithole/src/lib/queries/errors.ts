@@ -14,7 +14,7 @@
 
 import type { PostgrestError } from "@supabase/supabase-js";
 
-import type { AsyncResult } from "@/lib/useAsync";
+import type { AsyncResult } from "@/lib/hooks";
 
 /**
  * Postgres and PostgREST codes we can say something specific about.

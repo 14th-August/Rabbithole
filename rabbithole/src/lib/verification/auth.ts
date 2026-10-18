@@ -15,12 +15,12 @@
 import type { AuthError, Session } from "@supabase/supabase-js";
 
 import type { Db } from "@/lib/supabase";
-import type { AsyncResult } from "@/lib/useAsync";
+import type { AsyncResult } from "@/lib/hooks";
 
 // `toMessage` as well as the local `toAuthMessage`: the availability check is
 // an RPC and fails with a PostgrestError, not an AuthError. They are different
 // error shapes with different codes, so they get different translators.
-import { fail, ok, toMessage } from "./queries/errors";
+import { fail, ok, toMessage } from "../queries/errors";
 import { clearSignInStamp, markSignedIn } from "./sessionAge";
 import { markWelcomePending } from "./welcome";
 
