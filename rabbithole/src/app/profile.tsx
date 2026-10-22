@@ -18,13 +18,6 @@ import { signOut, useSession } from "@/lib/verification";
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/hooks";
 
-const TEXT_PRIMARY = "#12161D";
-const TEXT_SECONDARY = "#4C5566";
-const TEXT_TERTIARY = "#6B7688";
-const SURFACE = "#FFFFFF";
-const BORDER = "#E2E6ED";
-const DANGER = "#DC2626";
-
 /** One labelled profile value. */
 interface RowProps {
   label: string;
@@ -158,24 +151,28 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     fontWeight: "700",
     letterSpacing: -0.3,
-    color: TEXT_PRIMARY,
+    // Primary text.
+    color: "#12161D",
   },
   email: {
     textAlign: "center",
     fontSize: 14,
     lineHeight: 19,
     fontWeight: "400",
-    color: TEXT_SECONDARY,
+    // Secondary text, a step down from the name above it.
+    color: "#4C5566",
     marginTop: 4,
   },
   card: {
     marginTop: 32,
     paddingHorizontal: 16,
     paddingVertical: 4,
-    backgroundColor: SURFACE,
+    // A white card on the app's grey page background.
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: BORDER,
+    // Hairline. Just enough to separate the card from the page behind it.
+    borderColor: "#E2E6ED",
   },
   row: {
     flexDirection: "row",
@@ -188,7 +185,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 19,
     fontWeight: "400",
-    color: TEXT_TERTIARY,
+    // Tertiary text - the label is the quieter half of the row.
+    color: "#6B7688",
   },
   rowValue: {
     // Takes the slack so a long value wraps instead of pushing the label out.
@@ -197,14 +195,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 19,
     fontWeight: "400",
-    color: TEXT_PRIMARY,
+    // Primary text - the value is what the row is for.
+    color: "#12161D",
   },
   error: {
     textAlign: "center",
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "400",
-    color: DANGER,
+    // Error red, matching the inline field errors elsewhere in the app.
+    color: "#DC2626",
     marginTop: 16,
   },
   signOut: {
@@ -218,6 +218,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     fontWeight: "500",
-    color: DANGER,
+    // Error red. Signing out is destructive and has no undo, which is why this
+    // is not the brand blue every other action wears.
+    color: "#DC2626",
   },
 });

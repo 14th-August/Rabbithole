@@ -11,19 +11,11 @@
  */
 
 import { Stack } from "expo-router";
+import { StyleSheet } from "react-native";
 
 import { BootScreen } from "@/components/BootScreen";
 import { WelcomeOverlay } from "@/components/WelcomeOverlay";
 import { SessionProvider, useSession } from "@/lib/verification";
-
-/**
- * The page behind everything.
- *
- * Explicit because React Navigation's default theme paints #F2F2F2, which is
- * not this app's background. Any region a screen does not cover itself falls
- * through to this, and a mismatch reads as a border around the app.
- */
-const BACKGROUND = "#F7F8FA";
 
 /**
  * Mounts session state once, for the whole app.
@@ -69,13 +61,13 @@ function RootNavigator() {
           // group, and sliding an entire app section in looks like a stall. The
           // guard flips and the new group is simply there.
           animation: "none",
-          contentStyle: { backgroundColor: BACKGROUND },
+          contentStyle: styles.content,
         }}
       >
         {/*
           Declared first on purpose. SDK 57 has no `redirectTo` on
           Stack.Protected - that landed in SDK 58 - so a failed guard falls back
-          to the *first available screen*. Listing `(auth)` ahead of `(app)` is
+          to the *first available screen*. Listing `(auth)` ahead of `(tabs)` is
           therefore what makes sign-in the screen an unauthenticated user lands
           on, and `(auth)/_layout.tsx` names `sign-in` as the anchor.
         */}
@@ -84,7 +76,16 @@ function RootNavigator() {
         </Stack.Protected>
 
         <Stack.Protected guard={isSignedIn}>
-          <Stack.Screen name="(app)" />
+          <Stack.Screen name="(tabs)" />
+
+          {/*
+            After `(tabs)`, for the same fallback reason: the first available
+            screen is where a failed guard lands, and that has to be the tab bar
+            rather than a pushed detail screen. It sits out here rather than
+            inside `(tabs)` because it is not a tab - the control that opens it
+            floats over the bar. `create` IS a tab, so it is not listed here.
+          */}
+          <Stack.Screen name="profile" />
         </Stack.Protected>
       </Stack>
 
@@ -109,3 +110,12 @@ function RootNavigator() {
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  content: {
+    // The page behind everything, and explicit because React Navigation's
+    // default theme paints #F2F2F2 instead. Any region a screen does not cover
+    // falls through to this, and a mismatch reads as a border around the app.
+    backgroundColor: "#F7F8FA",
+  },
+});
