@@ -9,11 +9,13 @@ rules for screens that do not exist were removed, not deferred into prose.
 
 ## Styling
 
-**1. Colours are literals inside the `StyleSheet`, each with a comment naming
-its role.** There is no theme module, no provider, no `useTheme()` — and no
-block of `const TEXT_PRIMARY = …` at the top of the file either. A colour lives
-at the one place it is used, and the comment says what it represents, which is
-the thing a constant name was only ever approximating.
+**1. A colour used once is a literal in the `StyleSheet`, with a comment naming
+its role. A colour used more than once in a file gets a named constant at the
+top.** There is no theme module, no provider, no `useTheme()`. Where a value
+appears once, the comment carries more than a name could; where it repeats, the
+name is what stops the copies drifting apart — `(tabs)/_layout.tsx` has one blue
+for the plus at rest and another for every selected tab, each in two or three
+places, and editing one of three literals is a bug waiting to happen.
 
 ```tsx
 export function Thing() {
@@ -50,12 +52,22 @@ Prefer pointing at an existing entry when one is genuinely the same thing —
 `FieldError`'s icon reads `styles.text.color` because the glyph and the sentence
 are one object, and a spinner replacing a label wears that label's colour.
 
-This is a deliberate reversal, twice over. A two-scheme token system was correct
-for the app that was planned and was overhead for the app that exists — one
-light-mode auth flow. The per-file constants that replaced it then turned out to
-be a token system with extra steps: a name at the top, used once, 100 lines from
-the style that needed it. Duplication across files is the accepted cost; the
-benefit is that a file is readable on its own, top to bottom.
+Constants are **per file and never shared** — no `src/theme`, no imports between
+them. `TEXT_PRIMARY` may be declared in three files at once; that duplication is
+the accepted cost, and the benefit is that a file is readable on its own.
+
+**Only `(tabs)/_layout.tsx` follows the repeat half of this rule so far.** Seven
+other files still repeat a literal — `sign-in`, `sign-up` and `verify` (`#4C5566`,
+plus `#0165F2` in `verify`), `(auth)/_layout` (`#FFFFFF`), `profile` (`#12161D`,
+`#DC2626`), `Button` (`#0165F2`), `Field` (`#EFF1F5`). That is a **pending
+decision, not drift**: do not migrate them without being asked, and do not treat
+them as violations to fix in passing.
+
+The history, so the rule is not re-litigated: a two-scheme token system was
+correct for the app that was planned and overhead for the one that exists. The
+per-file constants that replaced it were a token system with extra steps when
+every name was used once — hence the move to literals. Naming the values that
+actually repeat is the part that survived.
 
 **2. Keep inline styles for genuinely dynamic values only** — an error border, a
 pending opacity, a safe-area inset. Everything static belongs in the StyleSheet.

@@ -16,6 +16,24 @@ import { Tabs } from "expo-router/js-tabs";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+/** Brand blue. The plus at rest, and the same value as the app icon and splash. */
+const BRAND = "#0165F2";
+
+/** The darkened brand blue a selected tab wears — the plus included. */
+const BRAND_SELECTED = "#023b8b";
+
+/** The pill's own surface, against the app's grey page. */
+const SURFACE = "#FFFFFF";
+
+/** On brand: the plus glyph, against its blue fill. */
+const ON_BRAND = "#FFFFFF";
+
+/** Primary text. The labels, the profile glyph, and the pill's shadow. */
+const TEXT_PRIMARY = "#12161D";
+
+/** Tertiary text. The tabs you are not on. */
+const TEXT_TERTIARY = "#6B7688";
+
 /** Profile control hitSlop — its glyph is smaller than its 44pt box. */
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
@@ -85,9 +103,10 @@ export default function TabLayout() {
             tabBarAccessibilityLabel: "Post a listing",
             // Skips the centring nudge; this one is meant to ride high.
             tabBarItemStyle: styles.tabBarItemRaised,
-            // Ignores `color`: an action, not a place, so never the active tint.
-            tabBarIcon: () => (
-              <View style={styles.plus}>
+            // Takes `focused`, not `color`. The circle is its own fill rather
+            // than a tinted glyph, so selection darkens the button itself.
+            tabBarIcon: ({ focused }) => (
+              <View style={[styles.plus, focused ? styles.plusFocused : null]}>
                 <Ionicons name="add" size={24} color={styles.plusGlyph.color} />
               </View>
             ),
@@ -165,7 +184,7 @@ const styles = StyleSheet.create({
     // instead packs all five to one side; that row has no `justifyContent`.
     paddingHorizontal: 14,
     height: 64,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: SURFACE,
     // Both zeroed: a numeric height is taken verbatim, but the bar still adds
     // the safe-area inset as padding inside it and squashes the icons.
     paddingTop: 0,
@@ -173,7 +192,7 @@ const styles = StyleSheet.create({
     // On a pill the default hairline draws a chord across the curve.
     borderTopWidth: 0,
     // Grey and soft — a surface lifted off the page, not a light.
-    shadowColor: "#12161D",
+    shadowColor: TEXT_PRIMARY,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -192,15 +211,15 @@ const styles = StyleSheet.create({
     // A point under React Navigation's default of 10.
     fontSize: 9,
     // Primary text, both states.
-    color: "#12161D",
+    color: TEXT_PRIMARY,
   },
   tabIcon: {
-    // Tertiary text — the tabs you are not on. Read by `tabBarInactiveTintColor`.
-    color: "#6B7688",
+    // Read by `tabBarInactiveTintColor`, not applied as a style.
+    color: TEXT_TERTIARY,
   },
   tabIconSelected: {
-    // Brand blue, same literal as the plus, the Button fill, the icon and splash.
-    color: "#0165F2",
+    // Read by `tabBarActiveTintColor`, not applied as a style.
+    color: BRAND_SELECTED,
   },
   plus: {
     alignItems: "center",
@@ -208,26 +227,32 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 999,
-    // Constant: an action, never the active tint.
-    backgroundColor: "#0165F2",
+    // At rest; selection swaps this below.
+    backgroundColor: BRAND,
     // Rides proud of the bar; the bar does not clip its items.
     marginTop: -6,
     // A glow in its own blue — the button lit, not held above a surface.
-    shadowColor: "#0165F2",
+    shadowColor: BRAND,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
     // Android has no shadowColor, so this is the whole effect there.
     elevation: 7,
   },
+  plusFocused: {
+    // Darkens like every other tab, only a fill rather than a glyph.
+    backgroundColor: BRAND_SELECTED,
+    // The glow follows the fill, or the halo outshines the button.
+    shadowColor: BRAND_SELECTED,
+  },
   plusGlyph: {
     // Read by the `Ionicons` `color` prop, not applied as a style.
-    color: "#FFFFFF",
+    color: ON_BRAND,
   },
   profile: {
     position: "absolute",
     // The same 16pt gutter the auth screens use.
-    left: 16,
+    right: 16,
     alignItems: "center",
     justifyContent: "center",
     // An accessibility floor, not a preference.
@@ -236,6 +261,6 @@ const styles = StyleSheet.create({
   },
   profileIcon: {
     // Read by the `Ionicons` `color` prop, not applied as a style.
-    color: "#12161D",
+    color: TEXT_PRIMARY,
   },
 });
