@@ -9,27 +9,53 @@ rules for screens that do not exist were removed, not deferred into prose.
 
 ## Styling
 
-**1. Styles are file-scoped `StyleSheet.create` blocks with literal values.**
-There is no theme module, no provider, no `useTheme()`. Each file declares the
-colours and sizes it uses at the top as named constants, and its layout in a
-`StyleSheet.create` block at the bottom.
+**1. Colours are literals inside the `StyleSheet`, each with a comment naming
+its role.** There is no theme module, no provider, no `useTheme()` — and no
+block of `const TEXT_PRIMARY = …` at the top of the file either. A colour lives
+at the one place it is used, and the comment says what it represents, which is
+the thing a constant name was only ever approximating.
 
 ```tsx
-const TEXT_PRIMARY = "#12161D";
-
 export function Thing() {
   return <Text style={styles.title}>Hello</Text>;
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 24, lineHeight: 30, fontWeight: "700", color: TEXT_PRIMARY },
+  title: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: "700",
+    // Primary text.
+    color: "#12161D",
+  },
 });
 ```
 
-This is a deliberate reversal. A two-scheme token system was correct for the app
-that was planned and was overhead for the app that exists — one light-mode auth
-flow. Duplication across files is the accepted cost; the benefit is that a file
-is readable on its own.
+A colour needed as a **prop** rather than a style — `Ionicons`' `color`,
+`placeholderTextColor`, `ActivityIndicator`'s `color` — gets its own entry and
+is read back through it, so the value still has exactly one home:
+
+```tsx
+<Ionicons name="chevron-back" size={24} color={styles.dismissIcon.color} />
+
+// …
+dismissIcon: {
+  // Primary text. Not a layout style — `Ionicons` takes a `color` prop, and
+  // this is where the value it reads lives.
+  color: "#12161D",
+},
+```
+
+Prefer pointing at an existing entry when one is genuinely the same thing —
+`FieldError`'s icon reads `styles.text.color` because the glyph and the sentence
+are one object, and a spinner replacing a label wears that label's colour.
+
+This is a deliberate reversal, twice over. A two-scheme token system was correct
+for the app that was planned and was overhead for the app that exists — one
+light-mode auth flow. The per-file constants that replaced it then turned out to
+be a token system with extra steps: a name at the top, used once, 100 lines from
+the style that needed it. Duplication across files is the accepted cost; the
+benefit is that a file is readable on its own, top to bottom.
 
 **2. Keep inline styles for genuinely dynamic values only** — an error border, a
 pending opacity, a safe-area inset. Everything static belongs in the StyleSheet.

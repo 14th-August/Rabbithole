@@ -31,10 +31,6 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/hooks";
 
-const TEXT_PRIMARY = "#12161D";
-const TEXT_SECONDARY = "#4C5566";
-const BRAND = "#0165F2";
-
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
 /** Matches sign-in exactly, so the logo does not shift across the transition. */
@@ -255,7 +251,7 @@ export default function SignUp() {
             <Ionicons
               name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
               size={20}
-              color={TEXT_SECONDARY}
+              color={styles.passwordToggleIcon.color}
             />
           </Pressable>
         }
@@ -327,7 +323,8 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     fontWeight: "700",
     letterSpacing: -0.3,
-    color: TEXT_PRIMARY,
+    // Primary text.
+    color: "#12161D",
     marginTop: 24,
   },
   subtitle: {
@@ -335,7 +332,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 19,
     fontWeight: "400",
-    color: TEXT_SECONDARY,
+    // Secondary text, a step down from the title above it.
+    color: "#4C5566",
     marginTop: 4,
   },
   firstField: {
@@ -359,12 +357,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "400",
-    color: TEXT_SECONDARY,
+    // Secondary text - the sentence, not the link beside it.
+    color: "#4C5566",
   },
   footerLink: {
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "400",
-    color: BRAND,
+    // Brand blue. The same literal as the Button fill and the app icon.
+    color: "#0165F2",
+  },
+  passwordToggleIcon: {
+    // Secondary text. Not a layout style - `Ionicons` takes a `color` prop,
+    // and the glyph must not compete with what is typed beside it.
+    color: "#4C5566",
   },
 });

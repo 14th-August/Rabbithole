@@ -22,11 +22,6 @@ import { RESEND_COOLDOWN_SECONDS, confirmSignUp, resendSignUpCode } from "@/lib/
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/hooks";
 
-const TEXT_PRIMARY = "#12161D";
-const TEXT_SECONDARY = "#4C5566";
-const BRAND = "#0165F2";
-const DANGER = "#DC2626";
-
 /** Matches the other two auth screens, so the logo does not shift. */
 const LOGO_SIZE = 96;
 
@@ -238,7 +233,8 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     fontWeight: "700",
     letterSpacing: -0.3,
-    color: TEXT_PRIMARY,
+    // Primary text.
+    color: "#12161D",
     marginTop: 24,
   },
   subtitle: {
@@ -246,14 +242,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 19,
     fontWeight: "400",
-    color: TEXT_SECONDARY,
+    // Secondary text, a step down from the title above it.
+    color: "#4C5566",
     marginTop: 4,
   },
   standaloneLink: {
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "400",
-    color: BRAND,
+    // Brand blue. The same literal as the Button fill and the app icon.
+    color: "#0165F2",
     marginTop: 24,
   },
   firstField: {
@@ -276,7 +274,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "400",
-    color: DANGER,
+    // Error red, matching the inline field errors above it.
+    color: "#DC2626",
     marginTop: 4,
   },
   footer: {
@@ -291,12 +290,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "400",
-    color: TEXT_SECONDARY,
+    // Secondary text - the sentence, not the link beside it.
+    color: "#4C5566",
   },
   footerLink: {
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "400",
-    color: BRAND,
+    // Brand blue. The same literal as the Button fill and the app icon.
+    color: "#0165F2",
   },
 });

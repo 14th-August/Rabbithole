@@ -19,8 +19,6 @@ interface FieldErrorProps {
   message: string;
 }
 
-const DANGER = "#DC2626";
-
 /** Inline message shown directly beneath the field it refers to. */
 export function FieldError({ message }: FieldErrorProps) {
   return (
@@ -31,7 +29,9 @@ export function FieldError({ message }: FieldErrorProps) {
       accessibilityLiveRegion="polite"
       style={styles.row}
     >
-      <Ionicons name="alert-circle" size={14} color={DANGER} />
+      {/* Takes the message's own colour: the glyph and the sentence are one
+          thing, and a mismatch between them would read as two. */}
+      <Ionicons name="alert-circle" size={14} color={styles.text.color} />
       <Text style={styles.text}>{message}</Text>
     </View>
   );
@@ -54,6 +54,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "400",
-    color: DANGER,
+    // Error red, the same value the errored field's border uses.
+    color: "#DC2626",
   },
 });

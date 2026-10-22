@@ -18,10 +18,6 @@ import {
   type ViewStyle,
 } from "react-native";
 
-const BRAND = "#0165F2";
-const ON_BRAND = "#FFFFFF";
-const TEXT_TERTIARY = "#6B7688";
-
 /** Default hitSlop for the text-only variant, which has no fill to aim at. */
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
@@ -110,7 +106,9 @@ export function Button({
       ]}
     >
       {isPending ? (
-        <ActivityIndicator color={isPrimary ? ON_BRAND : BRAND} />
+        // Wears the colour of the label it is standing in for, so the swap
+        // changes what the button says and nothing else about how it looks.
+        <ActivityIndicator color={isPrimary ? styles.primaryLabel.color : styles.ghostLabel.color} />
       ) : (
         <Text
           style={[
@@ -136,7 +134,9 @@ const styles = StyleSheet.create({
   },
   primary: {
     width: "100%",
-    backgroundColor: BRAND,
+    // Brand blue. The same literal as the tab icons, the app icon and the
+    // splash background, so there is exactly one blue in the app.
+    backgroundColor: "#0165F2",
   },
   ghost: {
     backgroundColor: "transparent",
@@ -148,15 +148,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     fontWeight: "600",
-    color: ON_BRAND,
+    // White on the brand fill. 5.07:1, which clears AA.
+    color: "#FFFFFF",
   },
   ghostLabel: {
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "400",
-    color: BRAND,
+    // Brand blue, same as the filled pill - this variant is the fill removed,
+    // not a different colour.
+    color: "#0165F2",
   },
   ghostLabelDisabled: {
-    color: TEXT_TERTIARY,
+    // Tertiary text. Recoloured rather than dimmed: halving small text's
+    // opacity fails contrast, which is why this is not `dimmed`.
+    color: "#6B7688",
   },
 });

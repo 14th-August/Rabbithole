@@ -2,7 +2,7 @@
  * The screen shown while the app works out who is signed in.
  *
  * Stands in between the native splash disappearing and the first real route
- * mounting; `SessionProvider` does the actual work. Painted LAUNCH_BLUE rather
+ * mounting; `SessionProvider` does the actual work. Painted the launch blue rather
  * than the page background because the native splash before it is a fixed
  * `#0165F2` from app.json, drawn by the OS before any JavaScript runs - matching
  * that colour and reusing the same white rabbit makes the handover invisible.
@@ -14,15 +14,6 @@ import { Image } from "expo-image";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import mark from "@/assets/images/splash-icon.png";
-
-/**
- * Must equal `expo-splash-screen.backgroundColor` in app.json. A mismatch
- * flashes at the native-to-JS handover, which reads as a bug.
- */
-const LAUNCH_BLUE = "#0165F2";
-
-/** White, matching the rabbit, which is white on this screen in every case. */
-const ON_LAUNCH = "#FFFFFF";
 
 /** Must equal `expo-splash-screen.imageWidth` in app.json, or the mark jumps. */
 const MARK_WIDTH = 76;
@@ -58,7 +49,9 @@ export function BootScreen({ message }: BootScreenProps) {
         accessible={false}
       />
 
-      <ActivityIndicator color={ON_LAUNCH} style={styles.spinner} />
+      {/* Takes the message's colour. There is one white on this screen - the
+          rabbit, the spinner and the line - and this keeps it one value. */}
+      <ActivityIndicator color={styles.message.color} style={styles.spinner} />
 
       {message !== undefined ? <Text style={styles.message}>{message}</Text> : null}
     </View>
@@ -70,7 +63,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: LAUNCH_BLUE,
+    // Must equal `expo-splash-screen.backgroundColor` in app.json, which the OS
+    // paints before any JavaScript runs. A mismatch flashes at the handover.
+    backgroundColor: "#0165F2",
   },
   mark: {
     width: MARK_WIDTH,
@@ -84,7 +79,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 19,
     fontWeight: "400",
-    color: ON_LAUNCH,
+    // White, matching the rabbit, which is white on this screen in every case.
+    color: "#FFFFFF",
     marginTop: 12,
     paddingHorizontal: 24,
   },

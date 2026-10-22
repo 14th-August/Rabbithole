@@ -26,10 +26,6 @@ import Animated, {
 import mark from "@/assets/images/splash-icon.png";
 import { consumeWelcome } from "@/lib/verification";
 
-/** Must match `BootScreen` and app.json, so the first run never changes colour. */
-const LAUNCH_BLUE = "#0165F2";
-const ON_LAUNCH = "#FFFFFF";
-
 /** 1.5x the splash mark. Larger than boot on purpose - this one is the subject. */
 const MARK_WIDTH = 76 * 1.5;
 
@@ -114,7 +110,9 @@ const styles = StyleSheet.create({
   screen: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: LAUNCH_BLUE,
+    // Must match `BootScreen` and `expo-splash-screen.backgroundColor` in
+    // app.json, so the first run never changes colour under the user.
+    backgroundColor: "#0165F2",
   },
   mark: {
     width: MARK_WIDTH,
@@ -126,7 +124,8 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     fontWeight: "700",
     letterSpacing: -0.3,
-    color: ON_LAUNCH,
+    // White, matching the rabbit above it.
+    color: "#FFFFFF",
     marginTop: 24,
     paddingHorizontal: 24,
   },

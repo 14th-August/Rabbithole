@@ -15,10 +15,6 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-/** The auth flow is a white page, not the app's slightly grey background. */
-const SURFACE = "#FFFFFF";
-const TEXT_PRIMARY = "#12161D";
-
 /** Default hitSlop for the dismiss chevron, whose glyph is smaller than its box. */
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
@@ -88,7 +84,7 @@ export default function AuthLayout() {
             hitSlop={HIT_SLOP}
             style={[styles.dismiss, topSpacing]}
           >
-            <Ionicons name="chevron-back" size={24} color={TEXT_PRIMARY} />
+            <Ionicons name="chevron-back" size={24} color={styles.dismissIcon.color} />
           </Pressable>
         ) : (
           // Reserve the same height so the form does not jump when moving
@@ -115,7 +111,7 @@ export default function AuthLayout() {
             // answer and is not: the screen falls through to React Navigation's
             // own theme, which painted #F2F2F2 behind the form, inset by this
             // layout's gutter - which is what the border around the app was.
-            contentStyle: { backgroundColor: SURFACE },
+            contentStyle: styles.content,
           }}
         />
       </View>
@@ -126,11 +122,16 @@ export default function AuthLayout() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: SURFACE,
+    // The auth flow is a white page, not the app's slightly grey background.
+    backgroundColor: "#FFFFFF",
   },
   container: {
     flex: 1,
     paddingHorizontal: 16,
+  },
+  content: {
+    // The same white as the page behind it. See the note on `contentStyle`.
+    backgroundColor: "#FFFFFF",
   },
   dismiss: {
     alignItems: "center",
@@ -143,5 +144,10 @@ const styles = StyleSheet.create({
   },
   dismissPlaceholder: {
     height: 44,
+  },
+  dismissIcon: {
+    // Primary text. Not a layout style - `Ionicons` takes a `color` prop, and
+    // this is where the value it reads lives.
+    color: "#12161D",
   },
 });

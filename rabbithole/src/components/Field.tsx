@@ -24,10 +24,6 @@ import {
 
 import { FieldError } from "@/components/FieldError";
 
-const SURFACE_SUNKEN = "#EFF1F5";
-const DANGER = "#DC2626";
-const PLACEHOLDER = "#9AA4B4";
-
 /**
  * Type scale for the entered text.
  *
@@ -109,7 +105,7 @@ export function Field({
       >
         <TextInput
           multiline={multiline}
-          placeholderTextColor={PLACEHOLDER}
+          placeholderTextColor={styles.placeholder.color}
           style={[styles.input, TEXT_SIZES[variant], inputStyle]}
           {...inputProps}
         />
@@ -132,10 +128,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 999,
     borderWidth: 1,
-    backgroundColor: SURFACE_SUNKEN,
-    // No visible outline at rest — matched to the fill rather than removed, so
-    // colouring it on error cannot shift the layout.
-    borderColor: SURFACE_SUNKEN,
+    // The sunken input fill.
+    backgroundColor: "#EFF1F5",
+    // The same value again, deliberately: no visible outline at rest, matched to
+    // the fill rather than removed, so colouring it on error cannot shift the layout.
+    borderColor: "#EFF1F5",
   },
   pillSingleLine: {
     alignItems: "center",
@@ -146,12 +143,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   pillErrored: {
-    borderColor: DANGER,
+    // Error red, the same value the message beneath uses.
+    borderColor: "#DC2626",
   },
   input: {
     // Takes the row's slack so a trailing accessory sits against the far edge
     // rather than immediately after the text.
     flex: 1,
+    // Primary text - what the user typed is the most important thing in the pill.
     color: "#12161D",
+  },
+  placeholder: {
+    // Placeholder grey, a step lighter than the entered text so the two never
+    // read as the same thing. Not a layout style - `placeholderTextColor` is a
+    // prop, and this is where the value it reads lives.
+    color: "#9AA4B4",
   },
 });
