@@ -1,11 +1,5 @@
 /**
  * The pill button.
- *
- * The two button shapes the app uses, their disabled and in-flight treatments,
- * and what a screen reader is told about each. Callers own `onPress` and compute
- * `disabled`. Extracted from `sign-in`, `sign-up` and `verify`, which repeated
- * the same tap-target block four times between them.
- *
  * Returns: a `Pressable` pill — filled for `primary`, text-only for `ghost`.
  */
 
@@ -18,12 +12,15 @@ import {
   type ViewStyle,
 } from "react-native";
 
+const BRAND = "#0165F2";
+const ON_BRAND = "#FFFFFF";
+const TEXT_TERTIARY = "#6B7688";
+
 /** Default hitSlop for the text-only variant, which has no fill to aim at. */
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
 /**
  * Which of the two shapes to wear.
- *
  * `primary` is the filled brand pill — one per screen, the thing the screen is
  * for. `ghost` is text-only, for the secondary action sitting under it.
  */
@@ -33,44 +30,15 @@ export type ButtonVariant = "primary" | "ghost";
 export interface ButtonProps {
   /** The visible text. Also the accessibility label unless one is given. */
   label: string;
-
   onPress: () => void;
-
   /** Defaults to `primary`. */
   variant?: ButtonVariant;
-
-  /**
-   * True while the press's work is running. Swaps the label for a spinner and
-   * blocks further presses.
-   */
   isPending?: boolean;
-
-  /** True when the press is not currently allowed. */
   disabled?: boolean;
-
-  /**
-   * Overrides the announced name when `label` alone is not descriptive — a
-   * countdown label like "Send a new code in 5s" reads badly out loud.
-   */
   accessibilityLabel?: string;
-
   style?: StyleProp<ViewStyle>;
 }
 
-/**
- * A button in one of the app's two shapes.
- *
- * @example
- * ```tsx
- * <Button
- *   label="Log in"
- *   onPress={handleSubmit}
- *   disabled={!isComplete}
- *   isPending={submit.isPending}
- *   style={{ marginTop: 24 }}
- * />
- * ```
- */
 export function Button({
   label,
   onPress,
@@ -81,9 +49,7 @@ export function Button({
   style,
 }: ButtonProps) {
   // A press mid-flight would fire the same action twice, so pending blocks just
-  // as disabled does — but the two are announced differently below.
   const isInert = disabled || isPending;
-
   const isPrimary = variant === "primary";
 
   return (
@@ -100,15 +66,12 @@ export function Button({
         styles.button,
         isPrimary ? styles.primary : styles.ghost,
         // The filled pill dims whole; a text-only button recolours instead,
-        // since halving small text's opacity fails contrast.
         isPrimary && isInert ? styles.dimmed : null,
         style,
       ]}
     >
       {isPending ? (
-        // Wears the colour of the label it is standing in for, so the swap
-        // changes what the button says and nothing else about how it looks.
-        <ActivityIndicator color={isPrimary ? styles.primaryLabel.color : styles.ghostLabel.color} />
+        <ActivityIndicator color={isPrimary ? ON_BRAND : BRAND} />
       ) : (
         <Text
           style={[
@@ -127,16 +90,12 @@ const styles = StyleSheet.create({
   button: {
     alignItems: "center",
     justifyContent: "center",
-    // An accessibility floor, not a style preference: 44 is the smallest square
-    // a finger can reliably hit.
     minHeight: 44,
     borderRadius: 999,
   },
   primary: {
     width: "100%",
-    // Brand blue. The same literal as the tab icons, the app icon and the
-    // splash background, so there is exactly one blue in the app.
-    backgroundColor: "#0165F2",
+    backgroundColor: BRAND,
   },
   ghost: {
     backgroundColor: "transparent",
@@ -148,20 +107,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     fontWeight: "600",
-    // White on the brand fill. 5.07:1, which clears AA.
-    color: "#FFFFFF",
+    color: ON_BRAND,
   },
   ghostLabel: {
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "400",
-    // Brand blue, same as the filled pill - this variant is the fill removed,
-    // not a different colour.
-    color: "#0165F2",
+    color: BRAND,
   },
   ghostLabelDisabled: {
-    // Tertiary text. Recoloured rather than dimmed: halving small text's
-    // opacity fails contrast, which is why this is not `dimmed`.
-    color: "#6B7688",
+    color: TEXT_TERTIARY,
   },
 });

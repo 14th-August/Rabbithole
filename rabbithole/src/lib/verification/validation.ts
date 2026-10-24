@@ -1,29 +1,21 @@
-/**
- * Form checks for the sign-up and sign-in screens.
- *
- * Three checks live here: email shape, campus domain, and username rules. All
- * are synchronous so they can run on every keystroke without a network call.
- * Supabase enforces the same rules server-side, so these only save a wasted
- * round trip — they are a convenience, never the gate.
- *
- * Returns: `isValidEmail` and `isCampusEmail` return booleans.
- * `validateUsername` returns an error sentence, or `null` when the shape is ok.
- */
+/* 
+* Overview: File contains validation for email addresses and 
+* uses regex and tokens to determine what are valud emails.
+*/
 
-/**
- * Whether a string is shaped like an email: text, `@`, text, dot, text.
- *
- * Permissive on purpose. Stricter regexes reject addresses that really work —
- * plus-tags, apostrophes, new TLDs — and fail real students to catch
- * hypothetical ones.
- *
- * Returns `true` if the shape is plausible.
- */
+/*
+* Def: function returns a boolean value for true
+* if any of the regex patterns match the email address.
+* In layman's terms the function checks if the text resembles 
+* an email address by characters and returns true.
+* returns {@link true} if valid, {@link false} otherwise.
+*/
+
 export function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-/** Students only: `my.viu.ca` is the student subdomain, `@viu.ca` is staff. */
+//variable for regex pattern for campus email address of students.
 const CAMPUS_EMAIL = /@my\.viu\.ca$/i;
 
 /**
@@ -41,14 +33,9 @@ export function isCampusEmail(value: string): boolean {
 /** Mirrors the CHECK on `profiles.username` and `is_username_available()`. */
 const USERNAME = /^[A-Za-z0-9_]{3,20}$/;
 
-/**
- * Checks the shape of a username, not whether it is taken — that needs the
- * database, via `isUsernameAvailable` in `auth.ts`.
- *
- * Returns a sentence naming the specific problem, or `null` if the shape is
- * fine. A sentence rather than a boolean so the user is not left guessing which
- * rule they broke.
- */
+/*
+
+*/
 export function validateUsername(value: string): string | null {
   const username = value.trim();
 
