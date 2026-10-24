@@ -7,11 +7,11 @@ Loaded into every session via `AGENTS.md`.
 
 | Thing | Version | Notes |
 | --- | --- | --- |
-| Expo SDK | `~57.0.20` | Read https://docs.expo.dev/versions/v57.0.0/ before using any API |
-| React Native | `0.86.3` | |
-| React | `19.2.3` | |
+| Expo SDK | `^58.0.19` | Read https://docs.expo.dev/versions/v58.0.0/ before using any API |
+| React Native | `0.88.0` | Strict types: `ColorValue` admits `null` and `number` |
+| React | `19.3.0` | |
 | TypeScript | `~6.0.3` | `strict: true` |
-| Node | ≥ 22.13 | Required by SDK 57 |
+| Node | ≥ 22.13 | `^22.13 \|\| ^24.3 \|\| ^26 \|\| >=27`, per SDK 58 |
 
 **Add dependencies with `npx expo install <pkg>`, never `npm install`.** Expo pins
 packages to SDK-compatible ranges; hand-bumping a native module past the supported
@@ -35,7 +35,8 @@ with `npx expo install --check`, never `npm update`.
 - `_layout.tsx` arranges its directory and is not itself a route.
 - `(group)/` adds no URL segment. `[id].tsx` is a dynamic segment.
 - Import `Tabs` from **`expo-router/js-tabs`** — importing it from `expo-router`
-  directly is deprecated in SDK 57.
+  directly is deprecated. The subpath survived the SDK 58 router rework —
+  `expo-router/js-tabs` is still in the package's exports map.
 - `typedRoutes` is on, so route strings are checked against the tree. A missing or
   stale `.expo/` means route types will not resolve; `npx expo start` regenerates them.
 

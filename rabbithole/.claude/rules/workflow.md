@@ -4,8 +4,8 @@ How work proceeds on Rabbithole. Loaded into every session via `AGENTS.md`.
 
 ## Before writing code
 
-1. **Read the versioned Expo docs** at https://docs.expo.dev/versions/v57.0.0/ for
-   any Expo or React Native API you are about to touch. SDK 57 changed things;
+1. **Read the versioned Expo docs** at https://docs.expo.dev/versions/v58.0.0/ for
+   any Expo or React Native API you are about to touch. SDK 58 changed things;
    memory and older tutorials are unreliable. This is not optional.
 2. **Check whether the thing already exists.** `src/types` has domain types and
    `src/lib` has the client, the queries and the session. A second `Listing`
@@ -82,7 +82,7 @@ Naming an agent explicitly always overrides this table.
 
 | The request looks like | Route to | You get back |
 | --- | --- | --- |
-| "how does X work", "what are the trade-offs", "is X supported in SDK 57" — anything resting on a fact nobody in the session has verified | `researcher` | Findings with sources. No edits. |
+| "how does X work", "what are the trade-offs", "is X supported in SDK 58" — anything resting on a fact nobody in the session has verified | `researcher` | Findings with sources. No edits. |
 | "is this right", "does this fit", "review this", "should I refactor" — or a feature just landed | `architecture-reviewer` | Findings against these rules and the v1/v2 plan. No edits. |
 | A requirements artifact arrives — a proposal, spec, outline, ER diagram, use-case list — and the question is whether it is buildable as written | `requirements-checker` | What it contradicts, what it leaves undecided, what it costs. No edits. |
 | "how do I build X", "where should this go", starting any feature — the question is how to implement something that does not exist yet | `code-mentor` | An implementation brief: where it goes, what to reuse, the skeleton, the trade-offs, and the one first step. No code. |

@@ -1,14 +1,15 @@
 # Rabbithole — agent instructions
 
 A student marketplace for Vancouver Island University — textbooks and second-hand
-items, traded between students on one campus. Expo SDK 57 / React Native /
+items, traded between students on one campus. Expo SDK 58 / React Native /
 TypeScript, targeting iOS, Android, and web from one codebase.
 
 ## Expo HAS CHANGED
 
-Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before
-writing any code. SDK 57 changed enough that model memory and most tutorials are
-actively wrong about it.
+Read the exact versioned docs at https://docs.expo.dev/versions/v58.0.0/ before
+writing any code. SDK 58 changed enough that model memory and most tutorials are
+actively wrong about it — the project moved 57 to 58 on 2026-10-24, and React
+Native went 0.86 to 0.88 with it.
 
 ## Rules
 

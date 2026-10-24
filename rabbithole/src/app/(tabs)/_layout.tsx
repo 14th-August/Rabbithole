@@ -41,6 +41,21 @@ const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 const ICON_SIZE = 26;
 
 /**
+ * Narrows what React Navigation hands a `tabBarIcon` to what `Ionicons` takes.
+ *
+ * An SDK 58 tax rather than a real case. React Native 0.88 tightened its types:
+ * `ColorValue` now admits `null` and `number` (a pre-processed colour), neither
+ * of which the icon prop accepts. Both tints below are stylesheet strings, so
+ * this never actually discards anything — but it narrows honestly instead of
+ * asserting a type the compiler was right to doubt.
+ *
+ * Returns the colour when it is a plain string, `undefined` otherwise.
+ */
+function iconColor(color: unknown): string | undefined {
+  return typeof color === "string" ? color : undefined;
+}
+
+/**
  * Arranges the five tabs and overlays the profile control.
  *
  * `index` is first because it is the leftmost tab and the screen the app opens
@@ -74,7 +89,7 @@ export default function TabLayout() {
               <Ionicons
                 name={focused ? "storefront" : "storefront-outline"}
                 size={ICON_SIZE}
-                color={color}
+                color={iconColor(color)}
               />
             ),
           }}
@@ -88,7 +103,7 @@ export default function TabLayout() {
               <Ionicons
                 name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"}
                 size={ICON_SIZE}
-                color={color}
+                color={iconColor(color)}
               />
             ),
           }}
@@ -118,7 +133,7 @@ export default function TabLayout() {
           options={{
             title: "Saved",
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? "heart" : "heart-outline"} size={ICON_SIZE} color={color} />
+              <Ionicons name={focused ? "heart" : "heart-outline"} size={ICON_SIZE} color={iconColor(color)} />
             ),
           }}
         />
@@ -132,7 +147,7 @@ export default function TabLayout() {
               <Ionicons
                 name={focused ? "pricetag" : "pricetag-outline"}
                 size={ICON_SIZE}
-                color={color}
+                color={iconColor(color)}
               />
             ),
           }}
