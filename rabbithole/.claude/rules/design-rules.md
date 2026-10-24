@@ -92,6 +92,7 @@ the literal into the file that needs it.
 | Tertiary / labels | `#6B7688` |
 | Placeholder | `#9AA4B4` |
 | Brand, links | `#0165F2` |
+| Brand, selected | `#023b8b` |
 | On brand | `#FFFFFF` |
 | Error | `#DC2626` |
 

@@ -7,6 +7,9 @@
     "icon": "./assets/images/icon.png",
     "scheme": "rabbithole",
     "userInterfaceStyle": "light",
+    "ios": {
+      "requireFullScreen": true
+    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0165F2",
@@ -33,6 +36,14 @@
       "expo-sqlite",
       "@react-native-vector-icons/material-design-icons",
       "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Rabbithole uses your photos so you can show what you're selling.",
+          "cameraPermission": "Rabbithole uses your camera so you can photograph what you're selling.",
+          "microphonePermission": false
+        }
+      ],
       "expo-web-browser"
     ],
     "experiments": {

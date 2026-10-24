@@ -2,11 +2,7 @@
  * The pill text field.
  *
  * The pill geometry every text input wears, the error colouring that marks one
- * wrong, and the message underneath it. Callers decide what is wrong and pass a
- * sentence; screens lay out their own labels. Extracted from three auth screens
- * that each defined the same `fieldStyle` literal — three copies is how two
- * quietly drift by a pixel.
- *
+ * sentence; the field itself does not know. Extracted from `sign-in`, `sign-up` and
  * Returns: a pill-wrapped `TextInput`, with a {@link FieldError} below it when
  * `error` is set.
  */
@@ -31,59 +27,53 @@ import { FieldError } from "@/components/FieldError";
  * code at `title2` so it reads as the subject of the screen, and every other
  * field wants `body`. Two options is not a design system.
  */
+
 const TEXT_SIZES = {
-  body: { fontSize: 16, lineHeight: 22, fontWeight: "400" },
-  title2: { fontSize: 20, lineHeight: 26, fontWeight: "600", letterSpacing: -0.2 },
+  body: { fontSize: 16, fontWeight: "400" },
+  title2: { fontSize: 20, fontWeight: "600", letterSpacing: -0.2 },
 } satisfies Record<string, TextStyle>;
 
 /** Which entry in {@link TEXT_SIZES} to use. */
 export type FieldVariant = keyof typeof TEXT_SIZES;
 
+/**
+ * Leading, applied to MULTILINE fields and nothing else.
+ *
+ * `lineHeight` on a single-line `TextInput` is the bug it looks like a style:
+ * the line box becomes taller than the glyphs need, the text settles toward the
+ * bottom of it, and the shift shows up when the field blurs — because a focused
+ * input is laid out by the platform's editor and a blurred one by RN. Every
+ * field in the app sat a few points low after being typed into, for this reason.
+ *
+ * Multiline genuinely needs it: with no leading, wrapped lines touch.
+ */
+const LINE_HEIGHTS = {
+  body: { lineHeight: 22 },
+  title2: { lineHeight: 26 },
+} satisfies Record<FieldVariant, TextStyle>;
+
 /** Everything a {@link Field} takes, on top of the usual `TextInput` props. */
 export interface FieldProps extends Omit<TextInputProps, "style"> {
-  /**
-   * A sentence naming what is wrong with this field, or `null` when it is fine.
-   *
-   * Setting it does two things: the pill's border turns red, and the message
-   * renders directly beneath. Pass `null` for a field that cannot be individually
-   * blamed — a form-level failure belongs below every field, not against one.
-   */
   error?: string | null;
 
   /**
-   * Rendered inside the pill, after the input — a show/hide toggle, a clear
-   * button, a unit. Sits on the trailing edge and does not scroll with the text.
+   * Sits inside the pill, before the text — a currency symbol, a `@`.
+   *
+   * Part of the value rather than decoration beside it, which is why it is in
+   * the pill and not a label above: "$" and "12.50" are one number, and a
+   * screen reader should not have to cross a container to read it.
    */
+  leading?: ReactNode;
+
   trailing?: ReactNode;
-
-  /** Type scale for the entered text. Defaults to `body`. */
   variant?: FieldVariant;
-
-  /** Style for the text itself — alignment, letter spacing. */
   inputStyle?: StyleProp<TextStyle>;
-
-  /** Style for the pill container. Margins go here, not on `inputStyle`. */
   style?: StyleProp<ViewStyle>;
 }
 
-/**
- * A single-line (or multiline) text input wearing the app's pill.
- *
- * @example
- * ```tsx
- * <Field
- *   value={form.email}
- *   onChangeText={(email) => updateField({ email })}
- *   placeholder="Email"
- *   keyboardType="email-address"
- *   accessibilityLabel="Email address"
- *   error={fieldError?.message ?? null}
- *   style={{ marginTop: 12 }}
- * />
- * ```
- */
 export function Field({
   error = null,
+  leading,
   trailing,
   variant = "body",
   inputStyle,
@@ -103,10 +93,19 @@ export function Field({
           style,
         ]}
       >
+        {leading}
+
         <TextInput
           multiline={multiline}
           placeholderTextColor={styles.placeholder.color}
-          style={[styles.input, TEXT_SIZES[variant], inputStyle]}
+          style={[
+            styles.input,
+            TEXT_SIZES[variant],
+            multiline
+              ? [LINE_HEIGHTS[variant], styles.inputMultiline]
+              : styles.inputSingleLine,
+            inputStyle,
+          ]}
           {...inputProps}
         />
 
@@ -150,8 +149,25 @@ const styles = StyleSheet.create({
     // Takes the row's slack so a trailing accessory sits against the far edge
     // rather than immediately after the text.
     flex: 1,
+    // RN gives a TextInput its own platform padding — several points on
+    // Android, a little on iOS — which pushes the typed text off the baseline
+    // of anything sitting beside it in the row. The pill owns the padding.
+    padding: 0,
+    // The other half of the same problem, and the half that was missed first
+    // time: Android reserves font padding on a TextInput exactly as it does on
+    // a Text, so switching it off on only one of the two left them misaligned.
+    includeFontPadding: false,
     // Primary text - what the user typed is the most important thing in the pill.
     color: "#12161D",
+  },
+  inputSingleLine: {
+    // Android only — iOS centres a single line in its own box already.
+    textAlignVertical: "center",
+  },
+  inputMultiline: {
+    // Text starts at the top of the box rather than floating in the middle of
+    // a 112pt one.
+    textAlignVertical: "top",
   },
   placeholder: {
     // Placeholder grey, a step lighter than the entered text so the two never
