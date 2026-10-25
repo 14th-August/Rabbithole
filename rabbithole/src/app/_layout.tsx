@@ -65,17 +65,18 @@ function RootNavigator() {
         }}
       >
         {/*
-          Declared first on purpose. SDK 57 has no `redirectTo` on
-          Stack.Protected - that landed in SDK 58 - so a failed guard falls back
-          to the *first available screen*. Listing `(auth)` ahead of `(tabs)` is
-          therefore what makes sign-in the screen an unauthenticated user lands
-          on, and `(auth)/_layout.tsx` names `sign-in` as the anchor.
+          Each half names where a failed guard lands. `redirectTo` arrived in SDK
+          58; before it, the fallback was the *first available screen*, which is
+          why `(auth)` is still declared first. Inference was not enough: it
+          resolves a screen that is merely present, and signing out from the
+          pushed `profile` screen left `/profile` matching nothing at all, which
+          is the unmatched-route screen rather than sign-in.
         */}
-        <Stack.Protected guard={!isSignedIn}>
+        <Stack.Protected guard={!isSignedIn} redirectTo="/">
           <Stack.Screen name="(auth)" />
         </Stack.Protected>
 
-        <Stack.Protected guard={isSignedIn}>
+        <Stack.Protected guard={isSignedIn} redirectTo="/sign-in">
           <Stack.Screen name="(tabs)" />
 
           {/*

@@ -21,10 +21,10 @@ const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 /**
  * The screen this group opens on. Load-bearing, not cosmetic.
  *
- * SDK 57's `Stack.Protected` has no `redirectTo`, so a failed guard falls back
- * to the first available screen in this group. Without an anchor the router
- * picks whichever it saw first, and signing out could land on `/verify`. Named
- * once because the back control also needs the bottom of the stack.
+ * The root layout now names `/sign-in` in `redirectTo`, so the guard fallback no
+ * longer rests on this. It still decides which screen the group opens on when
+ * entered without a path, and `canDismiss` below reads it to know it is at the
+ * bottom of the stack and has nothing to go back to.
  */
 const ANCHOR_SCREEN = "sign-in";
 
