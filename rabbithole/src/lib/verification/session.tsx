@@ -49,6 +49,12 @@ interface SessionState {
   isVerified: boolean;
 }
 
+/** A profile read, tagged with the user it was read for. */
+interface LoadedProfile {
+  userId: string;
+  profile: MyProfile | null;
+}
+
 const SessionContext = createContext<SessionState | undefined>(undefined);
 
 /**
@@ -76,7 +82,7 @@ export function useSession(): SessionState {
  */
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<MyProfile | null>(null);
+  const [loaded, setLoaded] = useState<LoadedProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -117,13 +123,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const userId = session?.user.id ?? null;
 
   useEffect(() => {
-    if (userId === null) {
-      setProfile(null);
-      return;
-    }
+    if (userId === null) return;
 
-    // Stops a slow response for a previous user overwriting a newer one — real
-    // when sign-out and sign-in happen quickly.
+    // The tag on `loaded` already keeps a stale read off the screen; this just
+    // skips the pointless write when the user changes mid-flight.
     let active = true;
 
     // Through the query layer, not around it. Inline here it bypassed
@@ -136,17 +139,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // The session is still valid; only the profile failed. Screens render
         // their own fallbacks rather than the app failing whole.
         console.warn("Failed to load profile:", error);
-        setProfile(null);
+        setLoaded({ userId, profile: null });
         return;
       }
 
-      setProfile(data);
+      setLoaded({ userId, profile: data });
     });
 
     return () => {
       active = false;
     };
   }, [userId]);
+
+  // Derived, not stored: tagging the read with its user means sign-out and
+  // user-switch clear the profile on render, instead of an effect writing
+  // `null` and cascading a render.
+  const profile = loaded?.userId === userId ? loaded.profile : null;
 
   const value: SessionState = {
     session,
