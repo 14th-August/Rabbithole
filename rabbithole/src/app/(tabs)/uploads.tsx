@@ -1,16 +1,17 @@
-/**
- * Uploads — `/uploads`.
- *
- * The listings you have posted, not built yet. Named `uploads` to match the tab
- * label and the trigger in `_layout.tsx` - the file was `uploaded.tsx`, which
- * left that trigger pointing at a route the router never created.
- *
- * Returns: the Uploads placeholder.
- */
+/*
+ * Date: 2026-10-30
+ * Uploads -- the /uploads tab. Placeholder, not built yet.
+ * Shows what you have posted; create.tsx already writes the rows it will read.
+*/
 
 import { StyleSheet, Text, View } from "react-native";
 
-/** The your-listings list's placeholder. */
+/*
+* Def: Uploads
+* Desc: Your own listings. The rows exist -- create.tsx writes them -- so this
+* needs only a seller-scoped read, which listings_seller_idx is built for.
+* Return: the placeholder.
+*/
 export default function Uploads() {
   return (
     <View style={styles.screen}>

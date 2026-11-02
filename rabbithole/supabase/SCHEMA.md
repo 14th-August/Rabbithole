@@ -64,8 +64,12 @@ column grants rather than RLS. The statement is refused outright.
   `active`, `reserved`, `sold` *and* `expired` — a buyer holding a link to a sold
   item should still see it. A feed that inherits that policy shows sold stock.
 - **Sort on `bumped_at`, never `created_at`.** Renewing lifts a listing without
-  backdating it, and `listings_feed_idx (campus, status, bumped_at desc)` is
-  built for that triple. Dropping a filter costs the index.
+  backdating it. Two indexes serve the feed, one per path:
+  `listings_feed_idx (campus, status, bumped_at desc)` when a campus is chosen,
+  and `listings_recent_idx (bumped_at desc) where status = 'active'` for
+  Discover's default, which spans every campus. Predicate *order* costs nothing
+  — Postgres reorders conjuncts — but dropping `campus` is what moves the query
+  from the first index to the second.
 - **Orders are written only by RPC.** Six functions own the lifecycle; each has
   to move the listing's status in the same transaction.
 - **Views report every column nullable.** Postgres carries no `NOT NULL`

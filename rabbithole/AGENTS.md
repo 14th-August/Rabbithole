@@ -50,13 +50,17 @@ time.
 - **Works end to end** — sign-up, the SMTP confirmation code, the `@my.viu.ca`
   gate (a server-side `before_user_created` hook), sign-in, the five-day
   staleness policy, sign-out, and the one-shot welcome splash.
-- **The signed-in app** is one screen: `(app)/index.tsx`, showing your own
-  profile fields and a sign-out button. That is deliberate, not unfinished.
+- **The signed-in app** is five tabs. Discover (`(tabs)/index.tsx`) is the
+  browse feed, Create posts a listing, and `profile.tsx` shows your own fields
+  and a sign-out button. Messages, Saved and Uploads are still placeholders.
 - **The database is complete and untouched** — 16 public tables, RLS, triggers,
   views. The schema describes the whole marketplace even though the app no
   longer does. `src/types/database.ts` is generated from it and in sync.
-- **Kept but unused** — `src/types/listing.ts`. No importer after the scale-down;
-  it is the shape to build back toward.
-- **Next** — one feature, briefed before it is written. Browse is the obvious
-  first, and `listing_summaries` already exists in the schema for it.
+- **Kept but unused** — `formatRating` and `formatRelativeTime` in
+  `lib/utils/format.ts`, and the save/unsave queries still only in git history
+  at `9180fd2^`. The feed card shows neither a seller nor an age, and the heart
+  is display-only.
+- **Next** — one feature, briefed before it is written. The listing detail
+  overlay a card taps through to, saving a listing, and Discover's search and
+  filter sheet are the three the feed leaves open.
 - **No tests.** `test-engineer` has a harness to set up when that starts.

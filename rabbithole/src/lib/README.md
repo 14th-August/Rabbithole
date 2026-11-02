@@ -10,7 +10,8 @@ rather than shape, and everything that talks to Supabase.
 | `supabase.ts` | The client, its session storage, and token refresh |
 | `verification/` | Sign-up, sign-in, the current session, and the form checks that guard them |
 | `queries/` | `errors.ts` (raw failures to sentences), `rows.ts` (the view-nullability cast), and one module per thing touched: `profiles.ts`, `listings.ts`, `categories.ts`, `tags.ts`, `meetups.ts`, `storage.ts` |
-| `hooks/` | `useAsync` — the lifecycle of one request |
+| `hooks/` | `useAsync` — one request's lifecycle; `usePaged` — an accumulating paged list |
+| `images.ts` | Re-encoding a picked photo to JPEG before it is uploaded |
 | `utils/` | Pure helpers. No database, no React, no native modules |
 
 Each subfolder has an `index.ts` barrel. Import `@/lib/verification`, not
@@ -45,9 +46,16 @@ That indirection is what let the whole UI be built before a database existed, an
 it is what will let caching, retries, or a query library be added later without
 touching a screen.
 
-`storage.ts` is the one module here that imports a native module: reading a
-picked photo needs `expo-file-system`, so it cannot be loaded from plain Node
-like the rest. That is a stated exception, not an oversight.
+Two modules here import a native module, and both are about the same photo:
+`storage.ts` needs `expo-file-system` to read a picked file, and `images.ts`
+needs `expo-image-manipulator` to re-encode one. Neither can be loaded from
+plain Node like the rest. Those are stated exceptions, not oversights.
+
+`images.ts` sits beside `queries/` rather than inside it because nothing in it
+touches the database, and outside `utils/` because that folder forbids native
+modules. It is also why `PhotoPicker` can call it: a component importing from
+`queries/` at runtime would cross the seam below, and importing from `@/lib/images`
+does not.
 
 **Query and auth functions take the client as their first argument** rather than
 importing the singleton. That is why the five screens currently calling a query
@@ -88,20 +96,23 @@ One rule in there is worth naming because it is easy to get backwards:
 free. Only `null` means "that was not a price", so a caller testing falsiness
 rejects every free listing.
 
-**Still missing, deliberately.** The display side of this — `formatPrice`,
-`formatRating`, `formatRelativeTime` — went in the 2026-10-18 scale-down and has
-not come back, because nothing renders a listing yet. It returns with the Browse
-card, and it carries three rules from `design-rules.md`: `price_cents: 0` renders
-"Free" and never "$0.00"; `rating_avg: null` renders "New seller" and never
-"0.0 ★", because zero stars is an accusation and no reviews is a fact; and
-`rating_count` always travels with `rating_avg`, since "5.0 ★" from one review is
-true and misleading at once.
+**`utils/format.ts` came back on 2026-10-30** with the Discover feed, recovered
+from `9180fd2^` rather than rewritten. It carries three rules from
+`design-rules.md`: `price_cents: 0` renders "Free" and never "$0.00";
+`rating_avg: null` renders "New seller" and never "0.0 ★", because zero stars is
+an accusation and no reviews is a fact; and `rating_count` always travels with
+`rating_avg`, since "5.0 ★" from one review is true and misleading at once.
 
-Recover the originals rather than rewriting them:
+Two things changed on the way back in. `parsePriceToCents` was dropped — the copy
+in `valid_posts.ts` is byte-identical and has the caller, and two exports of one
+name is a barrel error. And `formatCondition` was tightened to
+`Record<ListingCondition, string>` with no fallback, so a new condition is a
+build error rather than a raw `"like_new"` leaking onto a card. `formatCampus`
+is new, and is the one source for both the Discover filter sheet and the card's
+campus line.
 
-```sh
-git show 9180fd2^:rabbithole/src/lib/utils/format.ts
-```
+`formatRating` and `formatRelativeTime` have no caller yet; the feed card shows
+neither a seller nor an age. They are kept for the next card iteration.
 
 ## Calling Supabase
 

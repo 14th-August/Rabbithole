@@ -1,14 +1,9 @@
-/**
- * Verify screen — `/verify`.
- *
- * Entering the 6-digit code from the confirmation email, and asking for a new
- * one. `signUp` sent the code; this only completes what it started. Reached from
- * sign-up with the address as a route param. A user here has an account but NO
- * session — email confirmation is on, so `signUp` returns a user and no tokens,
- * which is why verification lives on the unauthenticated side of the app.
- *
- * Returns: the verify screen.
- */
+/*
+ * Date: 2026-10-30
+ * Verify Page -- enter the 6-digit code from the confirmation email, or resend.
+ * Reached from sign-up with the address as a route param. A user here has an
+ * account but NO session, which is why this lives on the signed-out side.
+*/
 
 import { Image } from "expo-image";
 import { Link, useLocalSearchParams } from "expo-router";
@@ -28,11 +23,19 @@ const LOGO_SIZE = 96;
 /** Digits in a confirmation code. Set by `otp_length` in `supabase/config.toml`. */
 const CODE_LENGTH = 6;
 
-/** The verify screen. */
+/*
+* Def: Verify
+* Desc: Holds the typed code, the in-flight state, and the resend cooldown.
+* signUp sent the original code; this only completes what it started. Email
+* confirmation is on, so signUp returned a user and no tokens -- there is no
+* session to protect this screen with.
+* Return: the verify screen.
+*/
 export default function Verify() {
-  // Query params are never guaranteed at runtime — typed routes check that a
-  // route exists, not that it was given the params it wants. Someone opening
-  // rabbithole://verify directly lands here with nothing.
+  /* useLocalSearchParams returns the route's params as an object of strings --
+     here { email?: string }. Marked optional on purpose: typed routes check
+     that a ROUTE exists, not that it was given the params it wants, so someone
+     opening rabbithole://verify directly lands here with email undefined. */
   const { email } = useLocalSearchParams<{ email?: string }>();
 
   const [code, setCode] = useState("");
@@ -65,11 +68,13 @@ export default function Verify() {
   const isComplete = code.length === CODE_LENGTH;
   const canSubmit = isComplete && !submit.isPending;
 
-  /**
-   * Keeps only digits, and never more than the code length. Codes get pasted
-   * from mail clients with trailing spaces often enough that stripping here is
-   * the difference between working and an invalid-token error on a good code.
-   */
+  /*
+  * Def: handleChangeCode
+  * Desc: Keeps only digits, and never more than CODE_LENGTH. Codes get pasted
+  * out of mail clients with trailing spaces often enough that stripping here is
+  * the difference between working and an invalid-token error on a good code.
+  * Return: nothing; sets the code and clears any previous error.
+  */
   function handleChangeCode(next: string) {
     setCode(next.replace(/[^0-9]/g, "").slice(0, CODE_LENGTH));
     submit.clearError();

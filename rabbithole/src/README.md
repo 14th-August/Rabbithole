@@ -3,8 +3,9 @@
 The application. Four folders, and one rule that explains all of them.
 
 The project was scaled back to working authentication on 2026-10-18 — see the
-State section of `AGENTS.md`. What is here is the auth flow and one signed-in
-screen. There is deliberately no more than that.
+State section of `AGENTS.md`. Built back since: the tab bar, and Create. The
+other four tabs are placeholders that say so in their own headers, and each is
+to be replaced wholesale rather than grown into the real screen.
 
 ## The rule: dependencies point downward
 
@@ -36,21 +37,28 @@ literal values, declared in the file that uses them. The values table lives in
 
 | File | URL | Is |
 | --- | --- | --- |
-| `_layout.tsx` | — | The root guard. Picks `(auth)` or `(app)` from the session |
+| `_layout.tsx` | — | The root guard. Picks `(auth)` or `(tabs)` from the session, and names where a failed guard lands |
 | `(auth)/_layout.tsx` | — | Shared auth chrome: white page, gutter, back chevron |
 | `(auth)/sign-in.tsx` | `/sign-in` | Email and password |
 | `(auth)/sign-up.tsx` | `/sign-up` | Username, campus email, password twice |
 | `(auth)/verify.tsx` | `/verify` | The 6-digit code, and resend |
-| `(app)/_layout.tsx` | — | A bare Stack, so the root has a group to guard |
-| `(app)/index.tsx` | `/` | Your own profile, and sign out |
+| `(tabs)/_layout.tsx` | — | The floating tab pill, with Create as a raised circle |
+| `(tabs)/index.tsx` | `/` | Discover — the browse feed. Placeholder |
+| `(tabs)/messages.tsx` | `/messages` | Messages. Placeholder |
+| `(tabs)/create.tsx` | `/create` | Post a listing. Built |
+| `(tabs)/saved.tsx` | `/saved` | Saved listings. Placeholder |
+| `(tabs)/uploads.tsx` | `/uploads` | Your own listings. Placeholder |
+| `profile.tsx` | `/profile` | Your own profile, and sign out. Not a tab — the control that opens it floats over the bar |
 
 **`(parentheses)` group files without adding a URL segment.** `(auth)/sign-in.tsx`
 is `/sign-in`, not `/auth/sign-in`. The group exists to attach a layout.
 
 **There is no `(auth)/index.tsx`,** deliberately — it would compete with
-`(app)/index.tsx` for `/`. `(auth)/_layout.tsx` names `sign-in` as its anchor
-instead, which is load-bearing: SDK 57's `Stack.Protected` has no `redirectTo`,
-so a failed guard falls back to the first available screen.
+`(tabs)/index.tsx` for `/`. `(auth)/_layout.tsx` names `sign-in` as its anchor
+instead, which decides the screen the group opens on and tells the back control
+it is at the bottom of the stack. Since SDK 58 the guard fallback is named
+outright with `redirectTo` in `_layout.tsx`, so it rests on neither the anchor
+nor declaration order.
 
 ## Imports
 

@@ -1,19 +1,14 @@
-/**
- * The signed-in app's tab bar.
- *
- * Five tabs in a floating white pill, with Create as a raised blue circle in the
- * middle rather than an ordinary item. JS tabs, not `NativeTabs`: a native bar
- * draws its own shape and its own items, so neither the pill nor the circle
- * could have been more than a fake painted over it.
- *
- * Returns: the tab navigator, with the profile control floating over it.
- */
+/*
+ * Date: 2026-10-30
+ * The signed-in app's tab bar, plus the bell and profile glyphs floating over it.
+ * Arranges every screen in src/app/(tabs).
+*/
 
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 // `expo-router` directly is the deprecated path in SDK 57.
 import { Tabs } from "expo-router/js-tabs";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /** Brand blue. The plus at rest, and the same value as the app icon and splash. */
@@ -34,33 +29,41 @@ const TEXT_PRIMARY = "#12161D";
 /** Tertiary text. The tabs you are not on. */
 const TEXT_TERTIARY = "#6B7688";
 
-/** Profile control hitSlop — its glyph is smaller than its 44pt box. */
-const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
+/*
+* Def: BELL_HIT_SLOP / PROFILE_HIT_SLOP
+* Desc: The two header glyphs are smaller than their 44pt boxes, so both need
+* slop. The boxes are flush, so neither may slop INWARD -- overlapping slop
+* makes the boundary between them a render-order accident. Each reaches 8pt
+* outward only.
+*/
+const BELL_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 0 };
+const PROFILE_HIT_SLOP = { top: 8, bottom: 8, left: 0, right: 8 };
 
 /** Under React Navigation's 28, which crowded the narrowed pill. */
 const ICON_SIZE = 26;
 
-/**
- * Narrows what React Navigation hands a `tabBarIcon` to what `Ionicons` takes.
- *
- * An SDK 58 tax rather than a real case. React Native 0.88 tightened its types:
- * `ColorValue` now admits `null` and `number` (a pre-processed colour), neither
- * of which the icon prop accepts. Both tints below are stylesheet strings, so
- * this never actually discards anything — but it narrows honestly instead of
- * asserting a type the compiler was right to doubt.
- *
- * Returns the colour when it is a plain string, `undefined` otherwise.
- */
+/*
+* Def: iconColor
+* Desc: Narrows what React Navigation hands a tabBarIcon down to what Ionicons
+* takes. RN 0.88 widened ColorValue to admit null and number (a pre-processed
+* colour), neither of which the icon prop accepts. Both tints below are
+* stylesheet strings, so nothing is ever actually discarded here.
+* Return: the colour when it is a plain string, undefined otherwise.
+*/
 function iconColor(color: unknown): string | undefined {
   return typeof color === "string" ? color : undefined;
 }
 
-/**
- * Arranges the five tabs and overlays the profile control.
- *
- * `index` is first because it is the leftmost tab and the screen the app opens
- * on; `create` is third because the circle has to be the middle of five.
- */
+/*
+* Def: TabLayout
+* Desc: Arranges the five tabs and overlays the two header glyphs. Declaration
+* order IS left-to-right order: index first because it is the leftmost tab and
+* the screen the app opens on, create third because the raised circle has to be
+* the middle of five. JS tabs, not NativeTabs -- a native bar draws its own
+* shape and items, so the pill and the circle could only have been fakes
+* painted over it.
+* Return: the tab navigator, with the bell and profile control above it.
+*/
 export default function TabLayout() {
   // The pill switches off the bar's own safe-area padding, so it is paid here.
   const insets = useSafeAreaInsets();
@@ -79,7 +82,10 @@ export default function TabLayout() {
           tabBarStyle: [styles.tabBar, { marginBottom: insets.bottom + 8 }],
         }}
       >
-        {/* `focused` swaps outline for filled, so selection is never colour alone. */}
+        {/* React Navigation calls tabBarIcon with { color, focused, size }.
+            `color` is already resolved to the active or inactive tint set
+            above, and `focused` is the boolean this swaps outline for filled
+            on, so selection is never carried by colour alone. */}
         <Tabs.Screen
           name="index"
           options={{
@@ -155,17 +161,48 @@ export default function TabLayout() {
       </Tabs>
 
       {/* Outside `Tabs`, which renders only its screens — a child here vanishes. */}
+      <NotificationsButton />
       <ProfileButton />
     </View>
   );
 }
 
-/**
- * The control that opens the profile screen.
- *
- * Local to this file because it has one caller. Headers are hidden, so there is
- * no header slot for it — hence an absolute overlay whose own box takes touches.
- */
+/*
+* Def: NotificationsButton
+* Desc: The bell, sitting immediately left of the profile glyph. Floats over
+* every tab the same way, since notifications are not Discover-specific.
+* Nothing is built behind it yet -- typedRoutes makes pushing to /notifications
+* a compile error until that route exists, which is the guard keeping this
+* honest. An Alert rather than no handler: a control that cannot be tapped
+* still invites the tap that tells you so.
+* Return: the absolutely-positioned bell.
+*/
+function NotificationsButton() {
+  // Must match ProfileButton, create.tsx and index.tsx. All four put their top
+  // edge on insets.top + 8; if one moves the title stops sharing a centre line.
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Pressable
+      onPress={() => Alert.alert("Notifications", "Notifications aren't turned on yet.")}
+      accessibilityRole="button"
+      accessibilityLabel="Notifications"
+      hitSlop={BELL_HIT_SLOP}
+      // Inline: a runtime inset, which a StyleSheet cannot hold.
+      style={[styles.bell, { top: insets.top + 8 }]}
+    >
+      <Ionicons name="notifications-outline" size={28} color={styles.headerGlyph.color} />
+    </Pressable>
+  );
+}
+
+/*
+* Def: ProfileButton
+* Desc: The control that opens the profile screen. headerShown is false app-wide,
+* so there is no header slot to put it in -- hence an absolute overlay whose own
+* 44pt box takes the touch. Local to this file; it has one caller.
+* Return: the absolutely-positioned profile glyph.
+*/
 function ProfileButton() {
   const router = useRouter();
   // Nothing else holds this clear of the notch: the root Stack hides its header.
@@ -176,11 +213,11 @@ function ProfileButton() {
       onPress={() => router.push("/profile")}
       accessibilityRole="button"
       accessibilityLabel="Your profile"
-      hitSlop={HIT_SLOP}
+      hitSlop={PROFILE_HIT_SLOP}
       // Inline: a runtime inset, which a StyleSheet cannot hold.
       style={[styles.profile, { top: insets.top + 8 }]}
     >
-      <Ionicons name="person-circle-outline" size={28} color={styles.profileIcon.color} />
+      <Ionicons name="person-circle-outline" size={28} color={styles.headerGlyph.color} />
     </Pressable>
   );
 }
@@ -274,8 +311,19 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
   },
-  profileIcon: {
-    // Read by the `Ionicons` `color` prop, not applied as a style.
+  // Flush against the profile box, not gapped: a gutter between two touch
+  // targets is a dead zone, and the 28pt glyphs already leave 16pt of air.
+  bell: {
+    position: "absolute",
+    right: 60,
+    alignItems: "center",
+    justifyContent: "center",
+    width: 44,
+    height: 44,
+  },
+  headerGlyph: {
+    // Read by the `Ionicons` `color` prop, not applied as a style. Shared: the
+    // bell and the profile glyph are the same thing in two positions.
     color: TEXT_PRIMARY,
   },
 });

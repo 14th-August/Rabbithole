@@ -1,18 +1,16 @@
-/**
- * The photo well on the Create form.
- *
- * Picks images from the camera or the library, caps how many, and reports them
- * in order — the first is the cover. It holds nothing itself: the screen owns
- * the array, so a failed publish does not lose what the user already chose.
- *
- * Returns: an empty well, or a strip of thumbnails followed by an add tile.
- */
+/*
+ * Date: 2026-10-30
+ * PhotoPicker: the photo well on the Create form, camera or library.
+ * Used by src/app/(tabs)/create.tsx, which owns the array it reports.
+*/
 
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import { useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { normalizeToJpeg } from "@/lib/images";
 import type { ImageAsset } from "@/lib/queries/storage";
 
 /** Brand blue. The add glyph, and the cover badge. */
@@ -36,16 +34,10 @@ const TEXT_TERTIARY = "#6B7688";
 /** The remove button glyph is 16pt inside a 24pt disc; this lifts it to 44. */
 const HIT_SLOP = { top: 10, bottom: 10, left: 10, right: 10 };
 
-/**
- * Picker options shared by the camera and the library.
- *
- * `quality` is the only compression available without a new dependency, and
- * unresized phone photos are what the storage migration warns will dominate the
- * free tier. It also forces an iPhone HEIC to transcode to JPEG — except for
- * `.png` and `.bmp` picked from the library, where iOS ignores it. That is why
- * the upload reads `mimeType` rather than assuming.
- */
-const QUALITY = 0.7;
+// No `quality` on either picker call, deliberately: it only applies when the
+// picker re-encodes, which it skips for a multi-select library pick and for a
+// PNG, so it never was the format guarantee it looked like. normalizeToJpeg
+// does the one lossy encode now.
 
 /** Props for {@link PhotoPicker}. */
 export interface PhotoPickerProps {
@@ -55,38 +47,62 @@ export interface PhotoPickerProps {
   /** Called with the whole next array, never with a delta. */
   onChange: (photos: ImageAsset[]) => void;
 
-  /**
-   * How many photos are allowed. Passed in rather than imported so this stays a
-   * presentational component — `MAX_LISTING_PHOTOS` is the query layer's rule,
-   * and `src/components` does not reach into `src/lib/queries` for values.
-   */
+  /** How many are allowed. Passed in, not imported: that rule is the query layer's. */
   max: number;
 
   disabled?: boolean;
 }
 
-/**
- * Choose up to `max` photos, cover first.
- *
- * Whether at least one is required is not decided here — the screen asks
- * `validateListing`, which currently says yes. This component only ever reports
- * what was chosen, so making photos optional again is a change in one place.
- *
- * Returns the well when empty, the strip once there is something to show.
- */
+/*
+* Def: PhotoPicker
+* Desc: Choose up to `max` photos, cover first. Whether at least one is REQUIRED
+* is not decided here -- the screen asks validateListing, which says yes. This
+* only reports what was chosen, so making photos optional is a one-place change.
+* Return: the well when empty, the strip once there is something to show.
+*/
 export function PhotoPicker({ photos, onChange, max, disabled = false }: PhotoPickerProps) {
+  /** Re-encoding is fast but not instant, and a 4-photo pick is four of them. */
+  const [isPreparing, setIsPreparing] = useState(false);
+
   const isFull = photos.length >= max;
 
-  /** Appends whatever the picker returned, never past `max`. */
-  function append(assets: ImagePicker.ImagePickerAsset[]) {
-    const added = assets.map((asset) => ({
-      uri: asset.uri,
-      width: asset.width,
-      height: asset.height,
-      mimeType: asset.mimeType,
-    }));
+  // Everything that mutates the array goes through this rather than `disabled`,
+  // so a second pick cannot land while the first is still being re-encoded.
+  const isBusy = disabled || isPreparing;
 
-    onChange([...photos, ...added].slice(0, max));
+  /*
+  * Def: append
+  * Desc: Re-encodes whatever the picker returned, then appends it, never past
+  * `max`. Trimmed to the remaining room BEFORE normalising, so nothing is
+  * decoded only to be sliced off and thrown away.
+  * Return: nothing; reports upward through onChange.
+  */
+  async function append(assets: ImagePicker.ImagePickerAsset[]) {
+    const room = max - photos.length;
+    if (room <= 0) return;
+
+    setIsPreparing(true);
+
+    // Sequential, not `Promise.all`: four full-resolution decodes at once is
+    // how an older phone runs out of memory mid-pick.
+    const added: ImageAsset[] = [];
+    for (const asset of assets.slice(0, room)) {
+      const normalized = await normalizeToJpeg(asset);
+      if (normalized) added.push(normalized);
+    }
+
+    setIsPreparing(false);
+
+    // One alert for the batch, not one per photo.
+    const failed = Math.min(assets.length, room) - added.length;
+    if (failed > 0) {
+      Alert.alert(
+        failed === 1 ? "A photo could not be used" : failed + " photos could not be used",
+        "Try picking " + (failed === 1 ? "it" : "them") + " again.",
+      );
+    }
+
+    if (added.length > 0) onChange([...photos, ...added]);
   }
 
   async function pickFromLibrary() {
@@ -102,10 +118,9 @@ export function PhotoPicker({ photos, onChange, max, disabled = false }: PhotoPi
       // iOS 15+. Without it the return order is not guaranteed, and the order
       // is what decides which photo becomes the cover.
       orderedSelection: true,
-      quality: QUALITY,
     });
 
-    if (!result.canceled) append(result.assets);
+    if (!result.canceled) await append(result.assets);
   }
 
   async function takePhoto() {
@@ -123,10 +138,9 @@ export function PhotoPicker({ photos, onChange, max, disabled = false }: PhotoPi
 
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ["images"],
-      quality: QUALITY,
     });
 
-    if (!result.canceled) append(result.assets);
+    if (!result.canceled) await append(result.assets);
   }
 
   /** The source choice. `Alert` rather than a sheet — two options and a cancel. */
@@ -145,11 +159,11 @@ export function PhotoPicker({ photos, onChange, max, disabled = false }: PhotoPi
   const well = (
     <Pressable
       onPress={addPhoto}
-      disabled={disabled}
+      disabled={isBusy}
       accessibilityRole="button"
       accessibilityLabel="Add a photo of your item"
-      accessibilityState={{ disabled }}
-      style={[styles.well, disabled ? styles.dimmed : null]}
+      accessibilityState={{ disabled: isBusy, busy: isPreparing }}
+      style={[styles.well, isBusy ? styles.dimmed : null]}
     >
       <Ionicons name="add" size={40} color={styles.addGlyph.color} />
       <Text style={styles.wellCaption}>Take or upload a photo of your item</Text>
@@ -183,7 +197,7 @@ export function PhotoPicker({ photos, onChange, max, disabled = false }: PhotoPi
 
           <Pressable
             onPress={() => removeAt(index)}
-            disabled={disabled}
+            disabled={isBusy}
             hitSlop={HIT_SLOP}
             accessibilityRole="button"
             accessibilityLabel={
@@ -202,11 +216,11 @@ export function PhotoPicker({ photos, onChange, max, disabled = false }: PhotoPi
       {isFull ? null : (
         <Pressable
           onPress={addPhoto}
-          disabled={disabled}
+          disabled={isBusy}
           accessibilityRole="button"
           accessibilityLabel={"Add a photo. " + photos.length + " of " + max + " chosen"}
-          accessibilityState={{ disabled }}
-          style={[styles.tile, styles.addTile, disabled ? styles.dimmed : null]}
+          accessibilityState={{ disabled: isBusy, busy: isPreparing }}
+          style={[styles.tile, styles.addTile, isBusy ? styles.dimmed : null]}
         >
           <Ionicons name="add" size={32} color={styles.addGlyph.color} />
         </Pressable>
@@ -219,9 +233,12 @@ export function PhotoPicker({ photos, onChange, max, disabled = false }: PhotoPi
       {photos.length === 0 ? well : strip}
 
       {/* Rendered at zero too. The cap is something to know before you start,
-          not only once you are near it. */}
+          not only once you are near it. Doubles as the progress line, because a
+          spinner of its own would be a third thing moving on a busy form. */}
       <Text style={styles.count}>
-        {"Photos Chosen (" + photos.length + "/" + max + ")"}
+        {isPreparing
+          ? "Preparing photos…"
+          : "Photos Chosen (" + photos.length + "/" + max + ")"}
       </Text>
     </View>
   );

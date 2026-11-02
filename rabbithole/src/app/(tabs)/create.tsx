@@ -1,13 +1,8 @@
-/**
- * Create — `/create`.
- *
- * Posting a listing. Holds the draft, loads the category list, and hands the
- * result to `createListing`, which owns the four-statement publish. The title
- * is pinned rather than scrolled, so it sits on the same line as the profile
- * control the tab layout floats over every screen.
- *
- * Returns: the new-listing form.
- */
+/*
+ * Date: 2026-10-30
+ * Create -- the /create tab. Posts a listing through createListing.
+ * Holds the draft; the four-statement publish belongs to lib/queries/listings.
+*/
 
 import { useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -43,20 +38,17 @@ const TEXT_PRIMARY = "#12161D";
 /** Tertiary text. The label above each control, and the currency symbol. */
 const TEXT_TERTIARY = "#6B7688";
 
-/**
- * The four campuses, in the order the enum declares them.
- *
- * Hardcoded rather than fetched: `campus` is a Postgres enum, not a table, so
- * there is nothing to read. Adding a member is a migration and a change here.
- */
+/*
+* The four campuses, in the order the enum declares them. Hardcoded rather than
+* fetched: `campus` is a Postgres enum, not a table, so there is nothing to
+* read. Adding a member is a migration and a change here.
+* Discover keeps its own copy, because that list carries an "All campuses" entry
+* this one must not have.
+*/
 const CAMPUS_OPTIONS: readonly SelectOption<Campus>[] = [
   { value: "nanaimo", label: "Nanaimo" },
   { value: "cowichan", label: "Cowichan" },
   { value: "powell_river", label: "Powell River" },
-  // The enum member is still `parksville_qualicum`; only the label is
-  // narrowed. Splitting it for real is `alter type public.campus add value
-  // 'qualicum'`, which is cheap and additive — but it is a migration, and
-  // every row already stored under the combined value would need deciding.
   { value: "parksville_qualicum", label: "Parksville" },
 ];
 
@@ -75,21 +67,29 @@ const PAYMENT_OPTIONS: readonly ChipOption<PaymentMethod>[] = [
   { value: "etransfer", label: "e-Transfer" },
 ];
 
-/**
- * The six top-level categories, as picker options.
- *
- * Children are filtered out on purpose: the textbook subjects exist in the
- * table and are still valid `category_id` values, but a six-item list is one
- * decision and an eleven-item tree is two. Drilling into Biology belongs to
- * Discover, where someone is browsing rather than posting.
- */
+/*
+* Def: toCategoryOptions
+* Desc: Turns category rows into picker options. Children are filtered out on
+* purpose -- the textbook subjects exist in the table and are still valid
+* category_id values, but a six-item list is one decision and an eleven-item
+* tree is two. Drilling into Biology belongs to Discover, where someone is
+* browsing rather than posting.
+* Return: one option per top-level row, { value: id, label: name }.
+*/
 function toCategoryOptions(rows: readonly Category[]): SelectOption<string>[] {
   return rows
     .filter((row) => row.parent_category_id === null)
     .map((row) => ({ value: row.id, label: row.name }));
 }
 
-/** The new-listing form. */
+/*
+* Def: Create
+* Desc: Holds the whole draft as separate useState slices, loads the category
+* list once on mount, and hands the result to createListing. The title is
+* pinned rather than scrolled, so it shares a line with the bell and profile
+* glyphs the tab layout floats over every screen.
+* Return: the new-listing form.
+*/
 export default function Create() {
   const { session, profile } = useSession();
   const insets = useSafeAreaInsets();
@@ -106,8 +106,9 @@ export default function Create() {
   const [tags, setTags] = useState<string[]>([]);
   const [problem, setProblem] = useState<ListingProblem | null>(null);
 
-  // `null` is "still loading" and a settled `AsyncResult` carries both outcomes,
-  // so one state holds all three cases without a second boolean to keep in step.
+  /* One state covers three cases: null is "still loading", and a settled
+     AsyncResult<Category[]> is { data, error } carrying either outcome. A
+     second boolean would be one more thing to keep in step. */
   const [categories, setCategories] = useState<AsyncResult<Category[]> | null>(null);
 
   const submit = useAsync(createListing);
@@ -132,6 +133,13 @@ export default function Create() {
   const isLoadingCategories = categories === null;
   const categoryOptions = toCategoryOptions(categories?.data ?? []);
 
+  /*
+  * Def: reset
+  * Desc: Clears every field after a successful post. Campus is deliberately NOT
+  * cleared -- it defaults to the seller's own and almost never changes between
+  * two listings, so re-picking it each time is friction for nothing.
+  * Return: nothing; sets state.
+  */
   function reset() {
     setPhotos([]);
     setTitle("");
@@ -145,6 +153,14 @@ export default function Create() {
     setProblem(null);
   }
 
+  /*
+  * Def: handleSubmit
+  * Desc: Validates the whole draft at once, then posts. validateListing returns
+  * a ListingProblem -- { field, message } naming the FIRST thing wrong, or null
+  * when the draft is good -- so one state drives both the message and which
+  * control gets reddened.
+  * Return: nothing; alerts and resets on success, sets problem on failure.
+  */
   async function handleSubmit() {
     const found = validateListing({
       photoCount: photos.length,
@@ -393,12 +409,15 @@ const styles = StyleSheet.create({
     backgroundColor: SURFACE_PAGE,
   },
   titleRow: {
-    // Exactly the profile control's height in (tabs)/_layout.tsx. If that 44
-    // changes, this one has to change with it.
+    // The profile control's height in (tabs)/_layout.tsx, so the title and the
+    // glyphs share a centre line.
     height: 44,
     justifyContent: "center",
-    // Clears the glyph, which floats at `right: 16` over every screen.
-    paddingRight: 44,
+    // Clears the two glyphs floating over every screen. For N flush 44pt
+    // controls starting at right: 16, with this header's paddingHorizontal: 24
+    // and 8 of clearance: 16 + 44N - 24 + 8, which is just 44N because
+    // 16 + 8 = 24. Two controls, so 88.
+    paddingRight: 88,
   },
   title: {
     fontSize: 24,

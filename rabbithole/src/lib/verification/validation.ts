@@ -1,51 +1,59 @@
-/* 
-* Overview: File contains validation for email addresses and 
-* uses regex and tokens to determine what are valud emails.
+/*
+ * Date: 2026-10-28
+ * Exportable functions to check for valid email addresses
+ * Used in Sign In and Sign Up Pages for Functionality.
 */
 
 /*
-* Def: function returns a boolean value for true
-* if any of the regex patterns match the email address.
-* In layman's terms the function checks if the text resembles 
-* an email address by characters and returns true.
-* returns {@link true} if valid, {@link false} otherwise.
+* Def: isValidEmail
+* Desc: Contains possible regex for emails and tests character sets
+* Will return False if emails dont contain @ symbols and runs .test
+* which strips text input of whitespace and checks for valid email address.
+* Return: boolean indicating if the email is valid
 */
-
 export function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-//variable for regex pattern for campus email address of students.
+/* Variable for regex pattern for campus email address of students.
+*  Ensures that the my.viu.ca patern is consistent and not using a gmail or other email address. */
 const CAMPUS_EMAIL = /@my\.viu\.ca$/i;
 
 /**
- * Whether an address belongs to a VIU student.
- *
- * Only worth calling once {@link isValidEmail} passes — on its own it accepts
+ *  Def: Whether an address belongs to a VIU student.
+ *  Desc: Checks for email variable is my.viu.ca regex pattern. 
+ *  Only worth calling once isValidEmail passes true on its own it accepts
  * `@my.viu.ca` with nothing in front of it.
- *
- * Returns `true` for a student address.
+ *  Returns: true for a student address.
  */
 export function isCampusEmail(value: string): boolean {
   return CAMPUS_EMAIL.test(value.trim());
 }
 
-/** Mirrors the CHECK on `profiles.username` and `is_username_available()`. */
-const USERNAME = /^[A-Za-z0-9_]{3,20}$/;
+/** Mirrors the CHECK on `profiles.username` and `is_username_available()`.
+ * Checks are made in Supabase DB but we ensure client side checks here
+ * to avoid unnecessary round trips. */
+const USERNAME = /^[A-Za-z0-9_]{3,30}$/;
 
 /*
-
+* Def: Check for length of a username. Takes passed value and trims it 
+* to remove whitespace. Then checks for lengths of username, max 30 characters
+* and minimum 3.
+* Returns: string message if username is invalid, null if valid.
 */
 export function validateUsername(value: string): string | null {
   const username = value.trim();
 
   if (username === "") return "Pick a username.";
   if (username.length < 3) return "Usernames are at least 3 characters.";
-  if (username.length > 20) return "Usernames are at most 20 characters.";
+  if (username.length > 30) return "Usernames are at most 30 characters.";
 
+  // Test is just a regex test to see if the username is valid. 
+  // If not, return a string message.
   if (!USERNAME.test(username)) {
     return "Letters, numbers and underscores only.";
   }
 
+  //default pass for checks
   return null;
 }

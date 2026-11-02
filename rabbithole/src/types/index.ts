@@ -27,13 +27,6 @@ export type {
   SavedListing,
 } from "./listing";
 
-/**
- * Generated from the live schema by `supabase gen types typescript --local`.
- *
- * Exported because the data layer needs `Database` to type the client. The
- * helper generics come with it so a query module can write
- * `TablesInsert<"listings">` without reaching past this barrel.
- */
 export type {
   Database,
   Json,

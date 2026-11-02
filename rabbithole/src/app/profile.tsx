@@ -1,15 +1,9 @@
-/**
- * Home screen — `/`.
- *
- * The whole signed-in app, for now: who you are, and a way out. This is the
- * deliberate floor the project was scaled back to — authentication works, and
- * everything is built back from here one feature at a time.
- *
- * Reads from `useSession()` rather than querying, because `SessionProvider`
- * already holds the profile. Signing out is `signOut` in `verification/auth.ts`.
- *
- * Returns: the signed-in home screen.
- */
+/*
+ * Date: 2026-10-30
+ * Profile -- the /profile screen: who you are, and the way out.
+ * Not a tab; the root layout declares it beside (tabs), since the control that
+ * opens it floats over the bar.
+*/
 
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -25,15 +19,14 @@ interface RowProps {
   value: string | null;
 }
 
-/**
- * A label-and-value row.
- *
- * Local to this screen: two styled `Text` elements used in one place. It moves
- * to `src/components` the second a different screen needs it, and not before.
- *
- * Returns the row, with an em-dash when the value is absent — a missing field is
- * a fact about the account, not a loading state.
- */
+/*
+* Def: Row
+* Desc: One label-and-value line in the card. Local to this screen -- two styled
+* Text elements used in one place. It moves to src/components the second another
+* screen needs it, and not before.
+* Return: the row, with an em-dash when the value is null. A missing field is a
+* fact about the account, not a loading state.
+*/
 function Row({ label, value }: RowProps) {
   return (
     <View style={styles.row}>
@@ -43,17 +36,25 @@ function Row({ label, value }: RowProps) {
   );
 }
 
-/** The signed-in home screen. */
+/*
+* Def: Home
+* Desc: Reads useSession() rather than querying -- SessionProvider already holds
+* the profile row, so a second read would be the same data a frame later.
+* Signing out is signOut in verification/auth.ts.
+* Return: the profile screen.
+*/
 export default function Home() {
   const { session, profile, isVerified } = useSession();
 
   const submit = useAsync(() => signOut(supabase));
   const [hasConfirmed, setHasConfirmed] = useState(false);
 
-  /**
-   * Signs out, in two taps. One is too easy to hit by accident on a screen whose
-   * only other content is read-only, and there is no undo.
-   */
+  /*
+  * Def: handlePress
+  * Desc: Signs out, in two taps. One is too easy to hit by accident on a screen
+  * whose only other content is read-only, and there is no undo.
+  * Return: nothing; the first tap arms, the second runs.
+  */
   async function handlePress() {
     if (!hasConfirmed) {
       setHasConfirmed(true);
@@ -66,13 +67,12 @@ export default function Home() {
     await submit.run();
   }
 
-  // `profile` is null for a moment after launch while the row loads, and for the
-  // window between signup and confirmation. The email always exists, so it is
-  // the honest fallback rather than a spinner over the whole screen.
-  //
-  // Showing the email here is fine precisely because this is the signed-in
-  // user's own screen. It must never reach another user's profile — which is why
-  // there is no email column on `profiles` at all.
+  /* `profile` is MyProfile | null -- null for a moment after launch while the
+     row loads, and for the window between signup and confirmation. The email
+     lives on the auth user, not the profile row, so it always exists and is the
+     honest fallback rather than a spinner over the whole screen.
+     Showing it is safe only because this is the user's OWN screen; there is no
+     email column on `profiles` at all, so it cannot reach anyone else's. */
   const name = profile?.username ?? session?.user.email ?? "Signed in";
 
   // `rating_avg` is null until the first review, which is NOT a rating of zero.
@@ -121,15 +121,14 @@ export default function Home() {
   );
 }
 
-/**
- * Renders an ISO 8601 timestamp as a short date.
- *
- * Timestamps are stored and passed as strings, never `Date`, so parsing happens
- * here at render. Local because it is the only formatting this screen needs —
- * the shared formatters went with the marketplace screens.
- *
- * Returns something like "Oct 18, 2026".
- */
+/*
+* Def: formatDate
+* Desc: Renders an ISO 8601 timestamp as a short date. Timestamps are stored and
+* passed as strings, never Date, so parsing happens here at render. Still local
+* because lib/utils/format.ts has only the RELATIVE form, which is wrong for a
+* join date -- "Joined 300d" is worse than "Joined Oct 18, 2026".
+* Return: something like "Oct 18, 2026".
+*/
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-CA", {
     year: "numeric",

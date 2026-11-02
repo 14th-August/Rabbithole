@@ -1,16 +1,17 @@
-/**
- * Messages — `/messages`.
- *
- * Buyer and seller conversations, not built yet. The schema carries the tables
- * already and nothing here reads them. A placeholder to be replaced wholesale
- * when messaging lands, rather than grown into the real screen.
- *
- * Returns: the Messages placeholder.
- */
+/*
+ * Date: 2026-10-30
+ * Messages -- the /messages tab. Placeholder, not built yet.
+ * Becomes real once a listing can be opened and its seller contacted.
+*/
 
 import { StyleSheet, Text, View } from "react-native";
 
-/** The conversations list's placeholder. */
+/*
+* Def: Messages
+* Desc: The buyer/seller inbox. conversations and messages exist in the schema
+* with no reader, and nothing can start a thread until a listing opens.
+* Return: the placeholder.
+*/
 export default function Messages() {
   return (
     <View style={styles.screen}>

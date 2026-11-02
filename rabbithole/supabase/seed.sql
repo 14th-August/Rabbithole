@@ -12,6 +12,15 @@
 -- on one of these, the query is wrong, not the seed.
 --
 -- Every account's password is 'rabbithole' — local only, never a real project.
+--
+-- THIS FILE IS HALF THE SEED. It can insert listing_images rows but not Storage
+-- objects, so on its own it leaves every seeded photo pointing at a file that
+-- does not exist. Reset with both steps:
+--
+--   npx supabase db reset && node supabase/seed-storage.mjs
+--
+-- The uploader matches each row to the fixture with its exact dimensions, so the
+-- varied aspect ratios below are real rather than claimed.
 
 -- ---------------------------------------------------------------------------
 -- Auth users

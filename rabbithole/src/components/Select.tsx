@@ -10,7 +10,7 @@
  */
 
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -92,6 +92,15 @@ export interface SelectProps<T extends string> {
   emptyMessage?: string;
 
   disabled?: boolean;
+
+  /**
+   * Renders the trigger as a 44pt icon button instead of the labelled pill.
+   *
+   * For a filter beside a search field, where the pill's text would eat the
+   * row. The sheet is unchanged. `label` becomes the only name a screen reader
+   * has for the control, which is why it is required on every `Select`.
+   */
+  icon?: ComponentProps<typeof Ionicons>["name"];
 }
 
 /**
@@ -113,6 +122,7 @@ export function Select<T extends string>({
   isLoading = false,
   emptyMessage,
   disabled = false,
+  icon,
 }: SelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const insets = useSafeAreaInsets();
@@ -126,7 +136,7 @@ export function Select<T extends string>({
   const text = chosen?.label ?? (isEmpty ? emptyMessage ?? placeholder : placeholder);
 
   return (
-    <View style={styles.fullWidth}>
+    <View style={icon === undefined ? styles.fullWidth : styles.iconWrap}>
       <Pressable
         onPress={() => setIsOpen(true)}
         disabled={isInert}
@@ -137,19 +147,30 @@ export function Select<T extends string>({
         // `busy` rather than `disabled` while loading: a spot list still
         // arriving is working, and `disabled` alone misreports that.
         accessibilityState={{ disabled: disabled || isEmpty, busy: isLoading }}
-        style={[styles.pill, isInert ? styles.dimmed : null]}
+        style={[
+          icon === undefined ? styles.pill : styles.iconPill,
+          isInert ? styles.dimmed : null,
+        ]}
       >
-        <Text
-          numberOfLines={1}
-          style={[styles.pillText, chosen === null ? styles.pillPlaceholder : null]}
-        >
-          {text}
-        </Text>
+        {icon === undefined ? (
+          <>
+            <Text
+              numberOfLines={1}
+              style={[styles.pillText, chosen === null ? styles.pillPlaceholder : null]}
+            >
+              {text}
+            </Text>
 
-        {isLoading ? (
+            {isLoading ? (
+              <ActivityIndicator size="small" color={styles.chevron.color} />
+            ) : (
+              <Ionicons name="chevron-down" size={18} color={styles.chevron.color} />
+            )}
+          </>
+        ) : isLoading ? (
           <ActivityIndicator size="small" color={styles.chevron.color} />
         ) : (
-          <Ionicons name="chevron-down" size={18} color={styles.chevron.color} />
+          <Ionicons name={icon} size={20} color={styles.chevron.color} />
         )}
       </Pressable>
 
@@ -232,6 +253,21 @@ function SelectRow<T extends string>({ option, isChosen, onPress }: SelectRowPro
 const styles = StyleSheet.create({
   fullWidth: {
     width: "100%",
+  },
+  // Not fullWidth: that would stretch the 44pt button across the whole row and
+  // leave nothing for the search field beside it.
+  iconWrap: {
+    alignSelf: "flex-start",
+  },
+  iconPill: {
+    alignItems: "center",
+    justifyContent: "center",
+    // The same 44, radius and fill as the `Field` beside it, so the filter and
+    // the search read as one row rather than two controls that met by accident.
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    backgroundColor: SURFACE_SUNKEN,
   },
   pill: {
     flexDirection: "row",

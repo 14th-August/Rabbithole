@@ -90,32 +90,38 @@ src/lib/        client, queries, session
 
 ## Documentation
 
-**Module header on every file** — a one-line summary, up to four lines of plain
-English on what is inside, then what callers get back:
+**`src/lib/verification/validation.ts` is the reference file.** Match it.
+
+**File header on every file** — a dated block saying what it exports and where
+that is used. Three or four lines, no more:
 
 ```ts
-/**
- * <What this module is, in one line.>
- *
- * <Two to four lines: what lives in this file, and the one constraint a cold
- * reader needs to know. Plain English, no scaffolding.>
- *
- * Returns: <what callers get back from the exports here.>
- */
+/*
+ * Date: YYYY-MM-DD
+ * <what this file exports, one line>
+ * <where it is used, one line>
+*/
 ```
 
-**Keep headers to roughly four lines of prose.** Long rationale essays, doc
-cross-references, and "the alternative I rejected" paragraphs do not belong in a
-header — they are what the reader has to scroll past to reach the code. State the
-constraint in a sentence; put the long version in `ARCHITECTURE.md` or a folder
-`README.md`, which are read on demand.
+**A labelled block above each function**, one to four lines of description:
 
-**TSDoc on every exported symbol.** These render on IDE hover, so they pay off
-continuously. Document what a prop *means*, not what its type already says.
+```ts
+/*
+* Def: <what it is>
+* Desc: <two to four lines on what it does, and the single non-obvious reason
+* it is written that way>
+* Return: <what comes back>
+*/
+```
 
-**When a file holds more than one function, each gets its own block** — one to
-three lines on what it does and the single non-obvious reason it is written that
-way, then a `Returns:` line. Do not fold several functions into one header.
+A one-line `/** ... */` is fine for a constant, a prop, or a type whose name
+nearly says it already. Reach for the labelled form when there is more than a
+line to say.
+
+**No rationale essays.** Not in a header, not above a function. No "the
+alternative I rejected" paragraph, no doc cross-references, no restating a
+constraint three ways. State it in a sentence; the long version belongs in
+`ARCHITECTURE.md` or a folder `README.md`, which are read on demand.
 
 **"Why" comments at non-obvious decisions**, never narration:
 
@@ -131,6 +137,12 @@ way, then a `Returns:` line. Do not fold several functions into one header.
 
 Prefer a precise type and a good name over prose. TypeScript is the documentation
 that cannot go stale.
+
+**The repo is mixed, deliberately.** This template arrived 2026-10-30. The
+Discover feed, the formatters, `usePaged`, and the photo pipeline use it; roughly
+25 older files still carry the previous convention (a prose module header with a
+`Returns:` line, and TSDoc on every exported symbol). Convert a file when you are
+already editing it. Converting as its own pass is not wanted.
 
 ## Style
 

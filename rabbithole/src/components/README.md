@@ -38,7 +38,7 @@ to answer rather than a prop three callers would have to thread.
 | `Field` | The pill text input. Owns the geometry, the error colouring, and placing the message beneath. Takes an optional `trailing` accessory. |
 | `FieldError` | One line of danger-coloured text with an alert icon, announced to screen readers. Used both against a field and, on its own, for form-level failures. |
 | `Chips` | Two row-of-pills controls: `ChipPicker` chooses one, `ChipToggles` chooses any. Share a pill and nothing else. |
-| `Select` | The pill that opens a bottom sheet of options. Owns its loading, empty and disabled states, because a spot list cannot populate until a campus is chosen. |
+| `Select` | The pill that opens a bottom sheet of options. Owns its loading, empty and disabled states, because a spot list cannot populate until a campus is chosen. Pass `icon` for a 44pt icon trigger instead of the labelled pill. |
 | `PhotoPicker` | The photo well. Camera or library, a cap passed in as a prop, cover badge on the first. Holds nothing — the screen owns the array. |
 | `TagInput` | Free-text tags, normalised on the way in. The only taxonomy a user creates, because `categories` is read-only to clients and `tags` is not. |
 
@@ -72,8 +72,14 @@ cost of obeying it.
 
 The rule still holds everywhere else. If a second caller never appears for one of
 them, folding it back into the screen is a small, honest change — not a
-migration. `Select` is the least likely to need that: Browse filters want the
-same control.
+migration. `Select` was the least likely to need that, and on 2026-10-30 it got
+its second caller exactly where this predicted: the Discover campus filter. That
+is what the `icon` prop is for — a labelled pill beside a search field would eat
+the row, and the sheet below it is unchanged.
+
+**`ListingCard` and `FeedSkeleton` are local to `(tabs)/index.tsx`** for now, per
+the rule at the top. `ListingCard` earns a place here the moment Saved or Uploads
+renders a grid, which is the next feature — expect the move, do not pre-empt it.
 
 Two things that fell out of building them:
 

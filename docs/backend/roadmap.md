@@ -67,8 +67,9 @@ This replaced the eight-table design wholesale rather than extending it.
   than gating the tab bar — but confirm before leaning on it.
 - **Email expiry.** VIU addresses die at graduation. Is `viu_verified_at` re-checked
   on a schedule, or a one-time stamp? Carried over from `ARCHITECTURE.md`.
-- **Image pipeline.** Resize on device before upload, or an Edge Function on write?
-  Unresized phone photos will dominate the Storage free tier.
+- ~~**Image pipeline.**~~ **Settled 2026-10-30: resize on device**, in
+  `src/lib/images.ts`, to JPEG at a 1600px long edge, with a mime allowlist on
+  the bucket as the backstop. See `ARCHITECTURE.md`.
 
 ---
 

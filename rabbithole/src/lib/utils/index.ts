@@ -1,12 +1,19 @@
-/**
- * Pure helpers — no database, no React, no native modules.
- *
- * The rules in here are the ones that are easy to break in a component and hard
- * to spot in review: what counts as a valid listing, and what `"0"` means in a
- * price field. Anything that touches Supabase belongs in `queries/`.
- *
- * Returns: re-exports only. Import from `@/lib/utils`, not the files inside it.
- */
+/*
+ * Date: 2026-10-30
+ * Barrel for the pure helpers: listing validation, and the display formatters.
+ * Used by screens and components; import from "@/lib/utils", not the files in it.
+*/
+
+// parsePriceToCents is the inverse of formatPrice but lives next door, because
+// it is a validation rule and has the CHECK constraints around it for company.
+export {
+  formatPrice,
+  formatRating,
+  formatRelativeTime,
+  formatCondition,
+  formatCampus,
+  type FormattedRating,
+} from "./format";
 
 export {
   validateListing,

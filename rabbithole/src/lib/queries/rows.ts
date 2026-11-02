@@ -22,6 +22,11 @@
  * @param row A single row from a view query, or `null` when not found.
  */
 export function viewRow<T>(row: unknown): T;
+// `T` is unused in this signature and still load-bearing: a call that supplies
+// an explicit type argument can only select an overload of matching arity, so
+// dropping it sends `viewRow<MyProfile>(null)` to the signature above and types
+// a null row as `MyProfile`.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function viewRow<T>(row: null): null;
 export function viewRow<T>(row: unknown | null): T | null;
 export function viewRow<T>(row: unknown | null): T | null {

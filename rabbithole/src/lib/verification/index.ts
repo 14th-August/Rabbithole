@@ -1,15 +1,7 @@
-/**
- * Everything a screen needs to sign someone up, in, or out.
- *
- * Five files that only make sense together: the Supabase auth calls (`auth.ts`),
- * the current session and profile (`session.tsx`), the five-day staleness policy
- * (`sessionAge.ts`), the post-signup greeting flag (`welcome.ts`), and the form
- * checks (`validation.ts`). Nothing here navigates — a screen reads the outcome
- * and decides where to go, since `signIn` is called from two places that differ.
- *
- * Returns: re-exports only. Import from `@/lib/verification`, not the files
- * inside it, so the internal split stays free to change.
- */
+/*
+ * Date: 2026-10-28
+ * Barrel file for verification functions.
+*/
 
 export {
   confirmSignUp,
@@ -22,7 +14,7 @@ export {
 } from "./auth";
 export type { SignInOutcome } from "./auth";
 
-export { SessionProvider, useSession } from "./session";
+export { SessionProvider, useSession } from "./AuthProvider";
 
 /**
  * Only the policy constant is public. `markSignedIn`, `clearSignInStamp` and

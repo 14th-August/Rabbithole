@@ -24,7 +24,7 @@ A change is not done until all of these hold:
       light only, so one pass — but an actual one.
 - [ ] Styles in a file-scoped `StyleSheet.create` block, inline only where a
       value is genuinely dynamic. Values from the table in `design-rules.md`.
-- [ ] Module header present, exported symbols carry TSDoc.
+- [ ] Dated file header present; each function carries a Def/Desc/Return block.
 - [ ] Empty, loading, and error states considered for anything that renders data.
 - [ ] No new dependency added without `npx expo install` (see technical defaults).
 

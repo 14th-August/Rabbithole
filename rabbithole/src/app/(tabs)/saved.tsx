@@ -1,16 +1,18 @@
-/**
- * Saved — `/saved`.
- *
- * The listings you have bookmarked, not built yet. `saved_listings` exists in
- * the schema and `SavedListing` in `src/types`, with no reader for either. This
- * screen only becomes real once there is a feed to save from.
- *
- * Returns: the Saved placeholder.
- */
+/*
+ * Date: 2026-10-30
+ * Saved -- the /saved tab. Placeholder, not built yet.
+ * Becomes real once the feed's heart writes to saved_listings.
+*/
 
 import { StyleSheet, Text, View } from "react-native";
 
-/** The saved-listings list's placeholder. */
+/*
+* Def: Saved
+* Desc: The bookmarked listings. saved_listings exists in the schema and
+* SavedListing in src/types, with no reader for either yet -- the Discover
+* card's heart reads is_saved but does not write it.
+* Return: the placeholder.
+*/
 export default function Saved() {
   return (
     <View style={styles.screen}>

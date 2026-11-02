@@ -1,22 +1,10 @@
 /**
  * Creating, confirming, and ending a session.
- *
- * Every `supabase.auth` call the app makes lives here, along with the one
- * translator that turns an `AuthError` into a readable sentence. These functions
- * report an outcome and never navigate; `session.tsx` observes who is signed in.
- * It sits beside `session.tsx` because that watches auth state and this changes it.
- *
- * Returns: every function returns an `AsyncResult` — `ok(value)` or
- * `fail(message)`, where the message is already fit to show a user.
  */
 
 import type { AuthError, Session } from "@supabase/supabase-js";
-
 import type { Db } from "@/lib/supabase";
 import type { AsyncResult } from "@/lib/hooks";
-
-// Both translators: the availability check is an RPC and fails with a
-// PostgrestError, not an AuthError. Different shapes, different codes.
 import { fail, ok, toMessage } from "../queries/errors";
 import { clearSignInStamp, markSignedIn } from "./sessionAge";
 import { markWelcomePending } from "./welcome";

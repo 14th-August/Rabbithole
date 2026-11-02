@@ -1,15 +1,8 @@
-/**
- * Sign-up screen — `/sign-up`.
- *
- * The sign-up form, the values typed into it, whether the two passwords agree,
- * and what to show while the request is in flight. Creating the account is
- * `signUp` in `verification/auth.ts`, and the VIU rule is a server-side auth
- * hook this screen only relays. Mirrors `sign-in.tsx` element for element so
- * moving between them reads as one screen changing — except that this scrolls,
- * since four fields and a keyboard do not fit on a small phone.
- *
- * Returns: the sign-up screen.
- */
+/*
+ * Date: 2026-10-30
+ * Sign Up Page -- creates the account through signUp in verification/auth.ts.
+ * The @my.viu.ca rule is a server-side auth hook; this screen only relays it.
+*/
 
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
@@ -36,14 +29,13 @@ const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 /** Matches sign-in exactly, so the logo does not shift across the transition. */
 const LOGO_SIZE = 96;
 
-/**
- * The values this form collects.
- *
- * `username` becomes `profiles.username`; `email` never reaches that table at
- * all, and neither does a real name — a VIU address carries one, which is why
- * the profile is pseudonymous. `password` is stored by auth, separately.
- * `confirmPassword` never leaves this screen.
- */
+/*
+* Shape of the SignUpForm object this screen collects.
+* `username` becomes profiles.username. `email` never reaches that table at all,
+* and neither does a real name -- a VIU address is PreferredName.LastName, which
+* is why the profile is pseudonymous. `password` is stored by auth, separately,
+* and `confirmPassword` never leaves this screen.
+*/
 interface SignUpForm {
   username: string;
   email: string;
@@ -51,7 +43,14 @@ interface SignUpForm {
   confirmPassword: string;
 }
 
-/** The sign-up screen. */
+/*
+* Def: SignUp
+* Desc: Four fields, checked on submit, plus a courtesy username check on blur.
+* Mirrors sign-in.tsx element for element so moving between them reads as one
+* screen changing -- except this one scrolls, since four fields and a keyboard
+* do not fit on a small phone.
+* Return: the sign-up screen.
+*/
 export default function SignUp() {
   const router = useRouter();
 
@@ -88,20 +87,26 @@ export default function SignUp() {
   // banner above the button. `fieldError` is "fix this input", and renders
   // against the input it belongs to.
 
-  /** Update one field, and clear any error so a retry starts clean. */
+  /*
+  * Def: updateField
+  * Desc: Patches one field and clears both error sources, so a retry starts
+  * clean rather than under red text about the previous attempt.
+  * Return: nothing; sets state.
+  */
   function updateField(patch: Partial<SignUpForm>) {
     setForm({ ...form, ...patch });
     setFieldError(null);
     submit.clearError();
   }
 
-  /**
-   * Checks the username on blur, not per keystroke — a request per character
-   * would ask about `k`, `ke`, `kel` and call a name taken mid-typing.
-   *
-   * A stale answer is harmless: the database re-validates on insert and `signUp`
-   * turns a lost race back into a sentence. A courtesy, never the guarantee.
-   */
+  /*
+  * Def: handleUsernameBlur
+  * Desc: Checks the username on blur, not per keystroke -- a request per
+  * character would ask about `k`, `ke`, `kel` and call a name taken mid-typing.
+  * A stale answer is harmless: the database re-validates on insert and signUp
+  * turns a lost race back into a sentence. A courtesy, never the guarantee.
+  * Return: nothing; sets fieldError when the name is taken or malformed.
+  */
   async function handleUsernameBlur() {
     const username = form.username.trim();
     if (username === "") return;

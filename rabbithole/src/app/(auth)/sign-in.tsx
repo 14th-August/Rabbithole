@@ -1,14 +1,9 @@
-/**
- * Sign-in screen — `/sign-in`.
- *
- * The sign-in form, the values typed into it, and what to show while the request
- * is in flight. Authenticating is `signIn` in `verification/auth.ts`; navigation
- * after success is handled by the root layout, not here. Field and button
- * geometry come from `@/components`. This is the first screen a signed-out user
- * sees — the root layout guards `(app)`, and `(auth)/_layout.tsx` anchors here.
- *
- * Returns: the sign-in screen.
- */
+/** 
+ * Date: 2026-10-27
+ * Sign In Page for the mobile application
+ * Uses built in Supabase Auth for email and password authentication.
+ * Users must use VIU email, safety checks are constant here
+**/
 
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
@@ -30,21 +25,21 @@ import { useAsync } from "@/lib/hooks";
 
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
-/** 96pt — two steps of the largest spacing step, so the logo stays on the grid. */
-const LOGO_SIZE = 96;
-
-/**
- * The values this form collects.
- *
- * Kept as one object rather than loose `useState` calls because this is the
- * shape `signIn` takes.
- */
+/*
+* Shape of the SignInForm object to send to supabase
+*/
 interface SignInForm {
   email: string;
   password: string;
 }
 
-/** The sign-in screen. */
+/*
+* Def: SignIn
+* Desc: Email and password, checked on submit. Holds the form, which field is
+* wrong, and the in-flight state. Does not navigate on success -- storing the
+* session flips the root layout's guard, and routing by hand would race it.
+* Return: the sign-in screen.
+*/
 export default function SignIn() {
   const router = useRouter();
 
@@ -67,7 +62,12 @@ export default function SignIn() {
   // purpose: GoTrue returns `invalid_credentials` for a wrong password and an
   // unknown address alike, so sign-in cannot reveal which addresses exist.
 
-  /** Update one field, and clear any error so a retry starts clean. */
+  /*
+  * Def: updateField
+  * Desc: Patches one field and clears both error sources, so a retry starts
+  * clean rather than under red text about the previous attempt.
+  * Return: nothing; sets state.
+  */
   function updateField(patch: Partial<SignInForm>) {
     setForm({ ...form, ...patch });
     setFieldError(null);
@@ -83,6 +83,10 @@ export default function SignIn() {
       return;
     }
 
+    /* signIn resolves a SignInOutcome, a union tagged by `kind`:
+       { kind: "signed-in" } or { kind: "needs-verification", email }.
+       run() returns null instead when the call failed outright, and useAsync
+       has already put that message in submit.error for the UI below. */
     const outcome = await submit.run(form);
     if (!outcome) return;
 
@@ -191,8 +195,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   logo: {
-    width: LOGO_SIZE,
-    height: LOGO_SIZE,
+    width: 96,
+    height: 96,
     borderRadius: 999,
   },
   title: {

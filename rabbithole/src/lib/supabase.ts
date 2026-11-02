@@ -1,24 +1,25 @@
 /**
- * The Supabase client — the app's single connection to the backend.
- *
- * Builds the client, persists the session, and keeps tokens refreshed. Queries
- * are not here: they live in `src/lib/queries`, the one place fixtures become
- * `supabase-js` calls, and nothing outside that folder should import this
- * module directly.
- *
+ * Date: 2026-10-28
+ * Supabase client for the mobile app.
+ * This is the single source of truth for the app's connection to the backend.
+ * Builds the client, persists the session, and keeps tokens refreshed. 
  * Returns: the `supabase` singleton, and `Db` as the type every query takes.
  */
 
-// Installs a `localStorage` global backed by on-device SQLite. Must come before
-// `createClient`, which reads the auth storage adapter at construction time.
-//
-// This is Expo SDK 57 guidance and deliberately differs from Supabase's own
-// React Native quickstart, which still says AsyncStorage. `expo-secure-store` is
-// the wrong answer here despite being the intuitive one: it caps values at 2048
-// bytes and a Supabase session exceeds that, which presents as random sign-outs
-// rather than an error.
+/* We go with a localStorage session for multiple reasons
+ * 1. The session bytes cap at 2048 bytes for AsyncStorage and we already hit the capacity
+ * 2. The Browser handles the local storage and the package is lightweight on install.
+ * 3. It's an implicit global, meaning we don't need to pass it as a variable.
+ * 4. Trade offs with storage outweigh AsyncStorage.
+*/
 import "expo-sqlite/localStorage/install";
 
+/*
+ * createClient: gets our supaBase client created
+ * type SupaBaseClient: How our client is structure
+ * AppState: Used to detect when the app is backgrounded and stop refreshing tokens
+ * Platform: Used to detect if the app is running on web or native, so we can handle session detection accordingly
+*/
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { AppState, Platform } from "react-native";
 
@@ -44,36 +45,28 @@ const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_KEY;
 if (!supabaseUrl || !supabaseKey) {
   throw new Error(
     "Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_KEY. " +
-      "Copy .env.example to .env and fill it in — see docs/backend/setup.md.",
+      "Check your .env file and restart the bundler."
   );
 }
 
 /**
- * The shared Supabase client.
- *
- * Authorization is not this object's job. Every rule about who may read or write
- * a row is an RLS policy, so a query returns only what the signed-in user may
- * see — do not add ownership filters for security, only to narrow a result.
- *
- * The `<Database>` generic is what makes every query typed. Without it
- * `.from("listings").select()` returns `any` and nothing catches a column that
- * no longer exists. Regenerate `src/types/database.ts` after every migration.
- */
+ * The shared Supabase client. We use a Database object so
+ * In other words, we let clients use the same db object for all queries, 
+ * and we don't have to reload the db queries for each session.
+ * This is mostly to support sqlite implementation so we 
+ * dont drag the whole supabase client into memory for each query.
+**/
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     storage: localStorage,
     autoRefreshToken: true,
     persistSession: true,
-    // There is no browser URL to parse a session out of on native. On web there
-    // is, and leaving this false would break any redirect-based flow.
+    // Leaving this for web scalability later on.
     detectSessionInUrl: Platform.OS === "web",
   },
 });
 
-// Nothing refreshes tokens while the app is backgrounded. Without this, the
-// first query after a long pause fails with a 401 that looks like a bug in the
-// query rather than an expired token. Web has no AppState lifecycle in this
-// sense, and supabase-js already handles visibility there.
+// Nothing refreshes tokens while the app is backgrounded. Without this we 404.
 if (Platform.OS !== "web") {
   AppState.addEventListener("change", (state) => {
     if (state === "active") {
@@ -83,3 +76,6 @@ if (Platform.OS !== "web") {
     }
   });
 }
+
+// more notes: we pass in DB as the client and two login tokens fight
+// for the same session. We also pass db so we don;t hard wire to a specific client
