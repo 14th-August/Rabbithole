@@ -19,12 +19,12 @@
 --
 -- HOW TO READ IT: every section states its expected result in the heading.
 -- Sections that expect an ERROR print theirs at the end of the run, because
--- psql reports errors on stderr — count them: there should be exactly TEN,
--- from sections 3, 6, 7, 10, 11, 12, 14, 16, 19 and 20.
+-- psql reports errors on stderr — count them: there should be exactly ELEVEN,
+-- from sections 3, 6, 7, 10, 11, 12, 14, 16, 19, 20 and 22.
 --
--- Fewer than ten is a policy that stopped denying, which is the failure this
--- file exists to catch. More than ten is a policy denying something it should
--- allow — check sections 13, 15, 17, 18 and 21, which expect success.
+-- Fewer than eleven is a policy that stopped denying, which is the failure this
+-- file exists to catch. More than eleven is a policy denying something it
+-- should allow — check sections 13, 15, 17, 18 and 21, which expect success.
 --
 -- Every section runs in its own transaction and rolls back, so the script is
 -- idempotent and leaves the seed untouched.
@@ -275,5 +275,24 @@ values ('20000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-0000000
 returning (id is not null) as created;
 rollback;
 
+-- ---------------------------------------------------------------------------
+-- Talking to yourself
+-- ---------------------------------------------------------------------------
+
+-- Discover hides your own listings, but that is a product filter and not a
+-- boundary. Three server-side rules are the boundary: the
+-- conversations_not_self CHECK, the `l.seller_id <> auth.uid()` arm of the
+-- conversations INSERT policy, and enforce_conversation_allowed(). Listing
+-- 2000...0001 is maya's own, so this is her messaging herself.
+
+\echo '22. a seller CANNOT open a thread on their own listing       expect ERROR'
+begin;
+set local role authenticated;
+:as_maya;
+insert into public.conversations (listing_id, buyer_id, seller_id)
+values ('20000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001',
+        '00000000-0000-4000-8000-000000000001');
+rollback;
+
 \echo ''
-\echo 'Done. Expect exactly TEN errors above: 3, 6, 7, 10, 11, 12, 14, 16, 19, 20.'
+\echo 'Done. Expect exactly ELEVEN errors above: 3, 6, 7, 10, 11, 12, 14, 16, 19, 20, 22.'

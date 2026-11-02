@@ -6,7 +6,7 @@
  * because storage is not transactional — see {@link createListing}, where the
  * `draft` status is what makes a half-finished publish recoverable.
  *
- * Returns: `AsyncResult` throughout. An empty campus is `[]` with no error;
+ * Returns: `AsyncResult` throughout. An empty feed is `[]` with no error;
  * nothing to sell is not a fault.
  */
 
@@ -40,10 +40,15 @@ const LISTING_COLUMNS =
  */
 export const FEED_PAGE_SIZE = 20;
 
-/** One page of the Browse feed. */
+/**
+ * One page of the Browse feed.
+ *
+ * Satisfies `PageOf<ListingSummary>` structurally, which is what lets `usePaged`
+ * consume it with no wrapper and no import either way.
+ */
 export interface ListingFeedPage {
   /** Up to {@link FEED_PAGE_SIZE} rows, freshest first. */
-  listings: ListingSummary[];
+  items: ListingSummary[];
 
   /**
    * Whether a further page exists.
@@ -57,20 +62,30 @@ export interface ListingFeedPage {
 /** Everything {@link getListingFeed} takes beyond the client. */
 export interface ListingFeedOptions {
   /**
-   * The campus to browse.
+   * The campus to browse, or omitted for every campus at once.
    *
-   * Required, and the leading column of `listings_feed_idx`. The feed is
-   * campus-scoped because the whole proposition is handing something over in
-   * person — a textbook in Powell River is not a result for someone in Nanaimo.
+   * Given, it is the leading column of `listings_feed_idx`. Omitted is the
+   * Discover default, and the reason `listings_recent_idx` exists: handing an
+   * item over in person is still the proposition, but whether a textbook is
+   * worth a ferry is the student's call to make, not the feed's.
    */
-  campus: Campus;
+  campus?: Campus;
 
   /** 0-based. Page 0 is the first {@link FEED_PAGE_SIZE} listings. */
   page?: number;
+
+  /**
+   * A seller whose own listings to leave out. Discover passes the signed-in
+   * viewer, so that you never browse your own stock.
+   *
+   * A product rule, not a security boundary. RLS is the authorization layer;
+   * a `seller_id` filter written here is false comfort as one.
+   */
+  excludeSellerId?: string;
 }
 
 /**
- * One page of live listings on a campus, freshest first.
+ * One page of live listings, freshest first, across every campus or one of them.
  *
  * `status` is filtered here rather than left to RLS, and that is load-bearing:
  * the listings SELECT policy admits `active`, `reserved`, `sold` and `expired`
@@ -80,9 +95,9 @@ export interface ListingFeedOptions {
  * Sorted on `bumped_at`, never `created_at` — renewing a listing lifts it
  * without backdating it, and `listings_feed_idx` is ordered for exactly this.
  *
- * Returns the page, or `[]` with no error for a campus with nothing on it.
+ * Returns the page, or `[]` with no error when nothing matches.
  *
- * @param options Which campus, and which page of it.
+ * @param options Which campus if any, which page, and whose listings to hide.
  */
 export async function getListingFeed(
   db: Db,
@@ -95,13 +110,26 @@ export async function getListingFeed(
   // this asks for FEED_PAGE_SIZE + 1 rows: if the extra one comes back there is
   // another page. An exact count would mean a second scan of the whole campus
   // on every scroll, to render a number nothing displays.
-  const { data, error } = await db
-    .from("listing_summaries")
-    .select("*")
-    // Both filters and the sort, in the order `listings_feed_idx` declares
-    // them. Reordering or dropping one costs the index, not just the tidiness.
-    .eq("campus", options.campus)
-    .eq("status", "active")
+  const filtered = db.from("listing_summaries").select("*").eq("status", "active");
+
+  // Narrowing to one campus is the indexed path: listings_feed_idx leads on
+  // campus. Unscoped, the planner takes listings_recent_idx, which exists for
+  // that. Predicate ORDER is irrelevant -- Postgres reorders conjuncts freely;
+  // dropping campus is what changes the plan.
+  const scoped =
+    options.campus === undefined ? filtered : filtered.eq("campus", options.campus);
+
+  // Your own listings are yours to manage on Uploads, not to browse past on
+  // Discover. Unindexed, and deliberately so: a filter on an already ordered
+  // scan, not a second sort.
+  const visible =
+    options.excludeSellerId === undefined
+      ? scoped
+      : scoped.neq("seller_id", options.excludeSellerId);
+
+  // Applied after the filters because .order/.range return a transform builder,
+  // which has no .eq to append to.
+  const { data, error } = await visible
     .order("bumped_at", { ascending: false })
     .range(from, from + FEED_PAGE_SIZE);
 
@@ -113,7 +141,7 @@ export async function getListingFeed(
   // The probe row is never rendered. Handing it to the caller would put 21
   // cards on a 20-card page and then show it again at the top of the next one.
   return ok({
-    listings: hasMore ? rows.slice(0, FEED_PAGE_SIZE) : rows,
+    items: hasMore ? rows.slice(0, FEED_PAGE_SIZE) : rows,
     hasMore,
   });
 }
